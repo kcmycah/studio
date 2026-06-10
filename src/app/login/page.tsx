@@ -8,6 +8,7 @@ import {
   createUserWithEmailAndPassword, 
   GoogleAuthProvider, 
   signInWithPopup,
+  sendPasswordResetEmail,
   AuthCredential
 } from "firebase/auth";
 import { useRouter } from "next/navigation";
@@ -23,6 +24,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [pendingCred, setPendingCred] = useState<AuthCredential | null>(null);
   const [errorHint, setErrorHint] = useState<string | null>(null);
@@ -51,27 +53,20 @@ export default function LoginPage() {
         await signInWithEmailAndPassword(auth, email, password);
         toast({ title: "Welcome Back", description: "Successfully signed in." });
       }
-      // Redirect happens in the useEffect above
     } catch (error: any) {
       let message = "An error occurred during authentication.";
       console.error("Auth Error Code:", error.code);
-      console.error("Auth Error Message:", error.message);
 
-      if (error.code === 'auth/invalid-api-key' || error.code === 'auth/invalid-credential' && !isSignUp) {
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
         message = "Incorrect email or password. Please try again.";
-      } else if (error.code === 'auth/user-not-found') {
-        message = "No account found with this email. Try signing up instead.";
-        setErrorHint("If you don't have an account yet, please switch to 'Sign Up'.");
-      } else if (error.code === 'auth/wrong-password') {
-        message = "Incorrect password. Please try again.";
       } else if (error.code === 'auth/email-already-in-use') {
         message = "This email is already registered.";
-        setErrorHint("You already have an account! Please switch to 'Sign In' to enter your workspace.");
-        setIsSignUp(false); // Automatically switch to sign in for convenience
-      } else if (error.code === 'auth/network-request-failed') {
-        message = "Network error. Please check your internet connection.";
+        setErrorHint("You already have an account! Please switch to 'Sign In'.");
+        setIsSignUp(false);
       } else if (error.code === 'auth/weak-password') {
         message = "Password is too weak. Please use at least 6 characters.";
+      } else if (error.code === 'auth/too-many-requests') {
+        message = "Too many failed attempts. Please try again later or reset your password.";
       }
       
       toast({
@@ -81,6 +76,35 @@ export default function LoginPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!email) {
+      toast({
+        variant: "destructive",
+        title: "Email Required",
+        description: "Please enter your email address to receive a reset link.",
+      });
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      toast({
+        title: "Reset Link Sent",
+        description: `A password reset email has been sent to ${email}.`,
+      });
+    } catch (error: any) {
+      console.error("Reset Error:", error.code);
+      toast({
+        variant: "destructive",
+        title: "Reset Failed",
+        description: "Could not send reset email. Please ensure the email is correct.",
+      });
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -158,19 +182,35 @@ export default function LoginPage() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="password"
-                  placeholder="Password"
-                  className="pl-10 h-11"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+            {!pendingCred && (
+              <div className="space-y-2">
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="password"
+                    placeholder="Password"
+                    className="pl-10 h-11"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                {!isSignUp && (
+                  <div className="flex justify-end">
+                    <Button 
+                      type="button" 
+                      variant="link" 
+                      size="sm" 
+                      className="px-0 h-auto text-xs text-muted-foreground hover:text-primary"
+                      onClick={handleResetPassword}
+                      disabled={resetLoading}
+                    >
+                      {resetLoading ? "Sending..." : "Forgot password?"}
+                    </Button>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
             <Button className="w-full h-12 text-lg font-medium shadow-lg shadow-primary/20" disabled={loading}>
               {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
               {pendingCred ? "Link Account" : isSignUp ? "Create Account" : "Sign In"}
