@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { computeDISAScore } from "@/lib/scoring";
 
 export default function NewAssessmentPage() {
   const { user } = useUser();
@@ -75,7 +76,10 @@ export default function NewAssessmentPage() {
         throw new Error(errData.error || "Failed to simulate tests");
       }
 
-      const { results, score }: { results: TestRunResult[], score: number } = await response.json();
+      const { results }: { results: TestRunResult[] } = await response.json();
+      
+      // Use the robust scoring framework instead of the simple API placeholder
+      const score = computeDISAScore(results);
 
       const assessmentRef = doc(collection(db, "assessments"));
       const assessmentData = {
