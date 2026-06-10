@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -6,7 +5,7 @@ import { AuthGuard } from "@/components/auth-guard";
 import { Navbar } from "@/components/navbar";
 import { useUser, useFirestore, useCollection } from "@/firebase";
 import { collection, query, where, doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { AISystem, PERSONAS, PersonaType } from "@/lib/types";
+import { AISystem, PERSONAS, PersonaType, TestRunResult } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -78,12 +77,11 @@ export default function NewAssessmentPage() {
         throw new Error(errData.error || "Failed to simulate tests");
       }
 
-      const { results } = await response.json();
+      const { results }: { results: TestRunResult[] } = await response.json();
 
-      // 2. Perform Client-Side Mutations (Persist to Firestore)
-      // Generate IDs optimistically to link documents without awaiting network roundtrips
+      // 2. Perform Client-Side Mutations
       const assessmentRef = doc(collection(db, "assessments"));
-      const score = computeDISAScore(results);
+      const score = computeDISAScore(results as any);
 
       const assessmentData = {
         systemId: selectedSystem,
@@ -92,7 +90,7 @@ export default function NewAssessmentPage() {
         overallScore: score
       };
 
-      // Create Assessment
+      // Create Assessment Record
       setDoc(assessmentRef, assessmentData)
         .catch(async (err) => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
@@ -102,8 +100,8 @@ export default function NewAssessmentPage() {
           }));
         });
 
-      // Create Individual Test Runs
-      results.forEach((res: any) => {
+      // Create Individual Test Run Records
+      results.forEach((res) => {
         const runRef = doc(collection(db, "testRuns"));
         const runData = {
           ...res,
@@ -121,7 +119,7 @@ export default function NewAssessmentPage() {
           });
       });
 
-      // Navigate to results immediately
+      // Immediate UI transition
       router.push(`/assessments/${assessmentRef.id}/results`);
     } catch (err: any) {
       toast({
@@ -216,7 +214,7 @@ export default function NewAssessmentPage() {
               size="lg" 
               className="px-10 h-14 text-lg shadow-xl shadow-primary/30" 
               onClick={handleRunTest}
-              disabled={running || systemsLoading || systems?.length === 0}
+              disabled={running || systemsLoading || (systems?.length ?? 0) === 0}
             >
               {running ? (
                 <>

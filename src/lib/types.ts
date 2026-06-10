@@ -18,12 +18,22 @@ export interface AccessibilityIssue {
   nodes?: any[];
 }
 
-export interface TestRun {
-  id: string;
-  assessmentId: string;
+/**
+ * The raw result returned from the simulation API.
+ * Does not yet have document IDs or assessment associations.
+ */
+export interface TestRunResult {
   persona: string;
   success: boolean;
   accessibilityIssues: AccessibilityIssue[];
+}
+
+/**
+ * The full record of a test run stored in Firestore.
+ */
+export interface TestRun extends TestRunResult {
+  id: string;
+  assessmentId: string;
   createdAt: Timestamp;
 }
 
