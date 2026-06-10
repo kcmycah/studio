@@ -34,20 +34,26 @@ export default function LoginPage() {
       getRedirectResult(auth)
         .then((result) => {
           if (result) {
+            // This gives you a Google Access Token if needed
+            // const credential = GoogleAuthProvider.credentialFromResult(result);
+            // const token = credential?.accessToken;
+            
             toast({
               title: "Welcome Back",
-              description: "Successfully signed in with Google.",
+              description: `Successfully signed in as ${result.user.displayName || result.user.email}.`,
             });
             router.push("/dashboard");
           }
         })
         .catch((error) => {
           console.error("Redirect Result Error:", error);
-          toast({
-            variant: "destructive",
-            title: "Authentication Failed",
-            description: error.message || "An error occurred during Google sign-in.",
-          });
+          if (error.code !== 'auth/popup-closed-by-user') {
+            toast({
+              variant: "destructive",
+              title: "Authentication Failed",
+              description: error.message || "An error occurred during Google sign-in.",
+            });
+          }
         });
     }
   }, [auth, router, toast]);
@@ -93,7 +99,6 @@ export default function LoginPage() {
     provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
     
     try {
-      // Using signInWithRedirect as requested
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
       toast({
