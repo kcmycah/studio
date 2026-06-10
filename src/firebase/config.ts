@@ -1,4 +1,8 @@
 
+/**
+ * Firebase configuration object.
+ * Values are pulled from environment variables defined in the .env file.
+ */
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
