@@ -72,6 +72,10 @@ const prompt = ai.definePrompt({
   name: 'executiveSummaryPrompt',
   input: { schema: AssessmentExecutiveSummaryInputSchema },
   output: { schema: AssessmentExecutiveSummaryOutputSchema },
+  config: {
+    // Explicitly set the model to ensure it uses the correct one
+    model: 'googleai/gemini-1.5-flash',
+  },
   prompt: `You are an expert accessibility consultant specializing in the DISA (Disability-Inclusive System Assessment) framework. 
 Generate a concise, non-technical executive summary for an AI system accessibility assessment.
 
@@ -109,7 +113,6 @@ const assessmentExecutiveSummaryFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      // Use the global ai object which has the correct model configured
       const { output } = await prompt(input);
       if (!output) throw new Error("No output generated from AI model.");
       return output;

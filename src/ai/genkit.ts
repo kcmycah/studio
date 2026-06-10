@@ -12,6 +12,6 @@ export const ai = genkit({
       apiKey: process.env.GEMINI_API_KEY,
     }),
   ],
-  // Use the standard model identifier for the google-genai plugin
+  // Correct standard model identifier for the google-genai plugin
   model: 'googleai/gemini-1.5-flash',
 });
