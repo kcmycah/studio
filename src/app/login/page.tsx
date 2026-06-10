@@ -27,7 +27,6 @@ export default function LoginPage() {
   const auth = useAuth();
   const { user } = useUser();
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user) {
       router.push("/dashboard");
@@ -66,6 +65,9 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     const provider = new GoogleAuthProvider();
+    // Request read-only access to the user's contacts
+    provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
+    
     try {
       await signInWithPopup(auth, provider);
       toast({
