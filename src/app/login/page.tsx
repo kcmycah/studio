@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { ShieldCheck, Mail, Lock, Loader2, AlertCircle } from "lucide-react";
+import { ShieldCheck, Mail, Lock, Loader2, AlertCircle, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -25,6 +25,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [pendingCred, setPendingCred] = useState<AuthCredential | null>(null);
+  const [errorHint, setErrorHint] = useState<string | null>(null);
   
   const router = useRouter();
   const { toast } = useToast();
@@ -40,6 +41,7 @@ export default function LoginPage() {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorHint(null);
     try {
       if (isSignUp) {
         await createUserWithEmailAndPassword(auth, email, password);
@@ -56,13 +58,14 @@ export default function LoginPage() {
       if (error.code === 'auth/invalid-api-key' || error.code === 'auth/invalid-credential') {
         message = "Firebase configuration is incorrect. Please check your keys.";
       } else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-login-credentials') {
-        message = "Invalid email or password.";
+        message = "Invalid email or password. Please try again.";
       } else if (error.code === 'auth/email-already-in-use') {
-        message = "This email is already registered. Try signing in instead.";
+        message = "This email is already registered.";
+        setErrorHint("It looks like you already have an account. Try signing in instead.");
       } else if (error.code === 'auth/operation-not-allowed') {
-        message = "This sign-in method is not enabled in the Firebase Console (Authentication > Sign-in method).";
+        message = "Email/Password sign-in is not enabled in the Firebase Console.";
       } else if (error.code === 'auth/network-request-failed') {
-        message = "Network error. Please check your internet connection.";
+        message = "Network error. Please check your connection.";
       }
       
       toast({
@@ -78,7 +81,6 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     const provider = new GoogleAuthProvider();
-    // Add scopes if needed: provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
     try {
       const result = await signInWithPopup(auth, provider);
       toast({ title: "Success", description: `Signed in as ${result.user.email}` });
@@ -91,12 +93,6 @@ export default function LoginPage() {
           variant: "destructive",
           title: "Account Exists",
           description: "This email is used with a different sign-in method. Sign in with your password to link them.",
-        });
-      } else if (error.code === 'auth/operation-not-allowed') {
-        toast({
-          variant: "destructive",
-          title: "Google Sign-In Disabled",
-          description: "Google provider is not enabled in your Firebase Console.",
         });
       } else {
         toast({
@@ -133,6 +129,19 @@ export default function LoginPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {errorHint && (
+            <Alert className="bg-primary/5 border-primary/20 text-primary">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Notice</AlertTitle>
+              <AlertDescription className="flex flex-col gap-2">
+                {errorHint}
+                <Button variant="link" size="sm" className="p-0 h-auto justify-start text-primary font-bold" onClick={() => setIsSignUp(false)}>
+                  Switch to Sign In <ArrowRight className="w-3 h-3 ml-1" />
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {pendingCred && (
             <Alert variant="destructive" className="bg-destructive/10 border-destructive/20">
               <AlertCircle className="h-4 w-4" />
