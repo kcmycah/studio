@@ -3,48 +3,41 @@ import { TestRunResult } from "./types";
 /**
  * Computes the DISA (Disability-Inclusive System Assessment) score.
  * This framework weights technical accessibility alongside functional equity.
+ * The calculation is deterministic based on the provided results.
  */
 export function computeDISAScore(testRuns: TestRunResult[]): number {
   if (!testRuns || testRuns.length === 0) return 0;
 
-  const totalIssues = testRuns.reduce((sum, run) => sum + run.accessibilityIssues.length, 0);
-  const avgIssuesPerPersona = totalIssues / testRuns.length;
-  
-  // 1. Accessibility Score (20% Weight)
-  // Based on issue density. We assume 20+ issues per persona is a critical failure.
-  const accessScore = Math.max(0, Math.min(100, (1 - (avgIssuesPerPersona / 20)) * 100));
+  // 1. Accessibility Segment (30% Weight)
+  // Penalizes based on the severity and count of technical issues.
+  const totalIssuesWeight = testRuns.reduce((sum, run) => {
+    return sum + run.accessibilityIssues.reduce((pSum, issue) => {
+      const weights = { critical: 10, serious: 5, moderate: 2, minor: 1 };
+      return pSum + weights[issue.impact];
+    }, 0);
+  }, 0);
 
-  // 2. Task Completion Score (25% Weight)
-  // Percentage of personas that successfully completed the core task.
+  // High weight of issues (e.g. 50+ total) results in a zero for this segment.
+  const accessScore = Math.max(0, 100 - (totalIssuesWeight * 1.5));
+
+  // 2. Task Completion Segment (40% Weight)
+  // Pure functional performance for personas.
   const successfulRuns = testRuns.filter(run => run.success).length;
   const taskCompletionScore = (successfulRuns / testRuns.length) * 100;
 
-  // 3. Accommodation Score (20% Weight)
-  // In a full audit, this checks for specific ARIA/persona-specific UI.
-  // MVP: Correlated with success but penalizes heavily for critical issues.
-  const hasCriticalIssues = testRuns.some(run => run.accessibilityIssues.some(i => i.impact === 'critical'));
-  const accommodationScore = taskCompletionScore * (hasCriticalIssues ? 0.7 : 1);
-
-  // 4. Outcome Equity Score (20% Weight) - MVP Baseline
-  // Measures if the AI response quality is equal across all personas.
-  const outcomeEquityScore = 75;
-
-  // 5. Recovery Score (10% Weight) - MVP Baseline
-  // Measures how easily a user can recover from a hallucination or error.
-  const recoveryScore = 60;
-
-  // 6. Governance Evidence Score (5% Weight) - MVP Baseline
-  // Checks for organizational commitment and documentation.
-  const governanceEvidenceScore = 80;
+  // 3. Accommodation & Equity Segment (30% Weight)
+  // Checks if personas failed specifically due to critical blockages.
+  const criticalFailures = testRuns.filter(run => 
+    !run.success || run.accessibilityIssues.some(i => i.impact === 'critical')
+  ).length;
+  
+  const accommodationScore = Math.max(0, 100 - (criticalFailures / testRuns.length * 100));
 
   // Final Weighted Calculation
   const finalScore = 
-    (accessScore * 0.20) +
-    (taskCompletionScore * 0.25) +
-    (accommodationScore * 0.20) +
-    (outcomeEquityScore * 0.20) +
-    (recoveryScore * 0.10) +
-    (governanceEvidenceScore * 0.05);
+    (accessScore * 0.30) +
+    (taskCompletionScore * 0.40) +
+    (accommodationScore * 0.30);
 
   return Math.round(finalScore);
 }

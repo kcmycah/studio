@@ -15,8 +15,8 @@ import {
   Select, 
   SelectContent, 
   SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+  SelectValue,
+  SelectTrigger
 } from "@/components/ui/select";
 import { ShieldAlert, Play, Loader2, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -31,7 +31,7 @@ export default function NewAssessmentPage() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const [selectedSystem, setSelectedSystem] = useState<string>("");
+  const [selectedSystemId, setSelectedSystemId] = useState<string>("");
   const [selectedPersonas, setSelectedPersonas] = useState<PersonaType[]>([]);
   const [running, setRunning] = useState(false);
 
@@ -44,6 +44,10 @@ export default function NewAssessmentPage() {
   }, [db, user]);
 
   const { data: systems, loading: systemsLoading } = useCollection<AISystem>(systemsQuery);
+
+  const selectedSystem = useMemo(() => {
+    return systems?.find(s => s.id === selectedSystemId);
+  }, [systems, selectedSystemId]);
 
   const togglePersona = (persona: PersonaType) => {
     setSelectedPersonas(prev => 
@@ -68,29 +72,31 @@ export default function NewAssessmentPage() {
       const response = await fetch("/api/run-tests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ personas: selectedPersonas })
+        body: JSON.stringify({ 
+          personas: selectedPersonas,
+          url: selectedSystem.url 
+        })
       });
 
       if (!response.ok) {
         const errData = await response.json();
-        throw new Error(errData.error || "Failed to simulate tests");
+        throw new Error(errData.error || "Failed to simulate deterministic tests");
       }
 
       const { results }: { results: TestRunResult[] } = await response.json();
       
-      // Use the robust scoring framework instead of the simple API placeholder
       const score = computeDISAScore(results);
 
       const assessmentRef = doc(collection(db, "assessments"));
       const assessmentData = {
-        systemId: selectedSystem,
+        systemId: selectedSystem.id,
         userId: user.uid,
         createdAt: serverTimestamp(),
         overallScore: score
       };
 
       setDoc(assessmentRef, assessmentData)
-        .catch(async (err) => {
+        .catch(async () => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: assessmentRef.path,
             operation: 'create',
@@ -107,7 +113,7 @@ export default function NewAssessmentPage() {
         };
         
         setDoc(runRef, runData)
-          .catch(async (err) => {
+          .catch(async () => {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
               path: runRef.path,
               operation: 'create',
@@ -138,13 +144,13 @@ export default function NewAssessmentPage() {
               <CardTitle className="font-headline text-3xl">Inclusive Fairness Audit</CardTitle>
             </div>
             <CardDescription className="text-lg">
-              Run automated accessibility scans across multiple disability personas.
+              Run deterministic accessibility scans across multiple disability personas.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-10">
             <div className="space-y-4">
               <Label className="text-lg font-semibold">Step 1: Select AI System</Label>
-              <Select value={selectedSystem} onValueChange={setSelectedSystem} disabled={systemsLoading}>
+              <Select value={selectedSystemId} onValueChange={setSelectedSystemId} disabled={systemsLoading}>
                 <SelectTrigger className="h-12 text-lg">
                   <SelectValue placeholder={systemsLoading ? "Loading systems..." : "Choose a system to audit"} />
                 </SelectTrigger>
@@ -204,9 +210,9 @@ export default function NewAssessmentPage() {
               size="lg" 
               className="px-10 h-14 text-lg" 
               onClick={handleRunTest}
-              disabled={running || !selectedSystem || selectedPersonas.length === 0}
+              disabled={running || !selectedSystemId || selectedPersonas.length === 0}
             >
-              {running ? <><Loader2 className="w-5 h-5 mr-3 animate-spin" />Running...</> : <><Play className="w-5 h-5 mr-3" />Initiate Audit</>}
+              {running ? <><Loader2 className="w-5 h-5 mr-3 animate-spin" />Auditing...</> : <><Play className="w-5 h-5 mr-3" />Initiate Audit</>}
             </Button>
           </CardFooter>
         </Card>
