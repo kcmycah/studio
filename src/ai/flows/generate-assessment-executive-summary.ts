@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A Genkit flow for generating a concise, non-technical executive summary of an AI system assessment.
@@ -62,6 +61,11 @@ export type AssessmentExecutiveSummaryOutput = z.infer<
   typeof AssessmentExecutiveSummaryOutputSchema
 >;
 
+/**
+ * Server action wrapper for the flow.
+ * Note: Next.js 15 'use server' files should only export async functions
+ * when imported by client components.
+ */
 export async function generateAssessmentExecutiveSummary(
   input: AssessmentExecutiveSummaryInput
 ): Promise<AssessmentExecutiveSummaryOutput> {
@@ -72,10 +76,8 @@ const prompt = ai.definePrompt({
   name: 'executiveSummaryPrompt',
   input: { schema: AssessmentExecutiveSummaryInputSchema },
   output: { schema: AssessmentExecutiveSummaryOutputSchema },
-  config: {
-    // Explicitly set the model to ensure it uses the correct one
-    model: 'googleai/gemini-1.5-flash',
-  },
+  // Use the standard model identifier for Genkit v1.x with Google AI
+  model: 'googleai/gemini-1.5-flash',
   prompt: `You are an expert accessibility consultant specializing in the DISA (Disability-Inclusive System Assessment) framework. 
 Generate a concise, non-technical executive summary for an AI system accessibility assessment.
 
@@ -112,13 +114,8 @@ const assessmentExecutiveSummaryFlow = ai.defineFlow(
     outputSchema: AssessmentExecutiveSummaryOutputSchema,
   },
   async (input) => {
-    try {
-      const { output } = await prompt(input);
-      if (!output) throw new Error("No output generated from AI model.");
-      return output;
-    } catch (error) {
-      console.error("Genkit Flow Error:", error);
-      throw error;
-    }
+    const { output } = await prompt(input);
+    if (!output) throw new Error("No output generated from AI model.");
+    return output;
   }
 );

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -24,7 +23,6 @@ import {
   ShieldAlert,
   ArrowLeft
 } from "lucide-react";
-import { generateAssessmentExecutiveSummary } from "@/ai/flows/generate-assessment-executive-summary";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -117,26 +115,38 @@ export default function AssessmentResultsPage() {
     
     setSummarizing(true);
     try {
-      const result = await generateAssessmentExecutiveSummary({
-        overallScore: assessment.overallScore,
-        systemName: system.name,
-        testRunSummaries: testRuns.map(run => ({
-          persona: run.persona,
-          success: run.success,
-          accessibilityIssues: run.accessibilityIssues.map(issue => ({
-            id: issue.id,
-            description: issue.description,
-            impact: issue.impact
+      // Use Route Handler instead of direct Server Action to avoid 15s timeout
+      const response = await fetch("/api/generate-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          overallScore: assessment.overallScore,
+          systemName: system.name,
+          testRunSummaries: testRuns.map(run => ({
+            persona: run.persona,
+            success: run.success,
+            accessibilityIssues: run.accessibilityIssues.map(issue => ({
+              id: issue.id,
+              description: issue.description,
+              impact: issue.impact
+            }))
           }))
-        }))
+        })
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate AI insights.");
+      }
+
+      const result = await response.json();
       setExecutiveSummary(result.executiveSummary);
     } catch (err: any) {
       console.error("AI Generation Error:", err);
       toast({ 
         variant: "destructive", 
         title: "AI Generation Failed", 
-        description: "The AI service is currently unavailable or timed out. Please try again." 
+        description: err.message || "The AI service timed out or encountered an error. Please try again." 
       });
     } finally {
       setSummarizing(false);
@@ -244,7 +254,7 @@ export default function AssessmentResultsPage() {
                   <div className="h-4 bg-muted/50 animate-pulse rounded w-1/2"></div>
                 </div>
               ) : (
-                <p className="italic">Click "Generate AI Insights" to visualize the executive summary of this audit. This may take up to 30 seconds.</p>
+                <p className="italic">Click "Generate AI Insights" to visualize the executive summary of this audit. This process uses Gemini 1.5 Flash and may take up to 30 seconds.</p>
               )}
             </div>
           </Card>
