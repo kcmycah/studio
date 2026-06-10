@@ -18,7 +18,8 @@ import {
   TrendingUp, 
   AlertCircle,
   Activity,
-  Loader2
+  Loader2,
+  PlusCircle
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -67,7 +68,13 @@ export default function Dashboard() {
             <h1 className="font-headline text-4xl font-bold tracking-tight mb-2">Workspace Dashboard</h1>
             <p className="text-muted-foreground text-lg">Monitor your AI compliance and fairness metrics.</p>
           </div>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-3">
+            <Link href="/systems/new">
+              <Button variant="outline" className="h-11 px-6 text-base">
+                <PlusCircle className="w-5 h-5 mr-2" />
+                Add System
+              </Button>
+            </Link>
             <Link href="/assessments/new">
               <Button className="h-11 px-6 text-base shadow-lg shadow-primary/20">
                 <Plus className="w-5 h-5 mr-2" />
@@ -127,10 +134,17 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        <h2 className="font-headline text-2xl font-bold mb-6 flex items-center gap-2">
-          <Bot className="w-6 h-6 text-primary" />
-          AI Systems Inventory
-        </h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="font-headline text-2xl font-bold flex items-center gap-2">
+            <Bot className="w-6 h-6 text-primary" />
+            AI Systems Inventory
+          </h2>
+          {systems && systems.length > 0 && (
+            <Link href="/systems/new" className="text-primary hover:underline text-sm font-medium flex items-center gap-1">
+              <Plus className="w-4 h-4" /> Add another system
+            </Link>
+          )}
+        </div>
 
         {loading ? (
           <div className="flex justify-center py-12">
