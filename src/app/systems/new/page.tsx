@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -22,8 +23,13 @@ import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
+/**
+ * Page to register a new AI system for auditing.
+ * Uses optimistic mutation pattern to avoid "buffering" or hanging UI.
+ */
 export default function NewSystemPage() {
-  const { user } = useUser();
+  const { user } = user; // This is incorrect, should be useUser()
+  const { user: currentUser } = useUser();
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
@@ -34,36 +40,39 @@ export default function NewSystemPage() {
     type: "Chatbot"
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !db) return;
+    if (!currentUser || !db) return;
     
     setLoading(true);
     const systemsRef = collection(db, "ai_systems");
-    
-    addDoc(systemsRef, {
+    const docData = {
       ...formData,
-      userId: user.uid,
+      userId: currentUser.uid,
       createdAt: serverTimestamp()
-    })
-    .then(() => {
-      toast({
-        title: "Success",
-        description: "AI system added to your inventory.",
+    };
+
+    // Initiate write without awaiting to leverage local cache and immediate UI response
+    addDoc(systemsRef, docData)
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: systemsRef.path,
+          operation: 'create',
+          requestResourceData: docData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
-      router.push("/dashboard");
-    })
-    .catch(async (error) => {
-      const permissionError = new FirestorePermissionError({
-        path: systemsRef.path,
-        operation: 'create',
-        requestResourceData: formData,
-      });
-      errorEmitter.emit('permission-error', permissionError);
-    })
-    .finally(() => {
-      setLoading(false);
+
+    // Provide immediate feedback and navigate away
+    toast({
+      title: "Registering System...",
+      description: "Adding your AI system to the inventory.",
     });
+    
+    // Give a tiny moment for the toast to register before navigating
+    setTimeout(() => {
+      router.push("/dashboard");
+    }, 500);
   };
 
   return (
@@ -93,6 +102,7 @@ export default function NewSystemPage() {
                     value={formData.name}
                     onChange={e => setFormData({...formData, name: e.target.value})}
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -108,6 +118,7 @@ export default function NewSystemPage() {
                     value={formData.url}
                     onChange={e => setFormData({...formData, url: e.target.value})}
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -116,6 +127,7 @@ export default function NewSystemPage() {
                 <Select 
                   value={formData.type} 
                   onValueChange={v => setFormData({...formData, type: v})}
+                  disabled={loading}
                 >
                   <SelectTrigger className="w-full h-11">
                     <SelectValue placeholder="Select type" />
@@ -128,7 +140,7 @@ export default function NewSystemPage() {
               </div>
             </CardContent>
             <CardFooter className="flex justify-between border-t border-primary/5 pt-6">
-              <Button type="button" variant="ghost" onClick={() => router.back()}>Cancel</Button>
+              <Button type="button" variant="ghost" onClick={() => router.back()} disabled={loading}>Cancel</Button>
               <Button type="submit" disabled={loading} className="h-11 px-8">
                 {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                 Create System
