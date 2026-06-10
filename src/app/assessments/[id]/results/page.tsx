@@ -6,7 +6,7 @@ import { Navbar } from "@/components/navbar";
 import { useFirestore } from "@/firebase";
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { AISystem, Assessment, TestRun } from "@/lib/types";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,11 +20,13 @@ import {
   Info,
   Loader2,
   Sparkles,
-  ShieldAlert
+  ShieldAlert,
+  ArrowLeft
 } from "lucide-react";
 import { generateAssessmentExecutiveSummary } from "@/ai/flows/generate-assessment-executive-summary";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 /**
  * Assessment Results Page
@@ -32,6 +34,7 @@ import { cn } from "@/lib/utils";
  */
 export default function AssessmentResultsPage() {
   const { id } = useParams();
+  const router = useRouter();
   const db = useFirestore();
   const { toast } = useToast();
   const [assessment, setAssessment] = useState<Assessment | null>(null);
@@ -40,13 +43,21 @@ export default function AssessmentResultsPage() {
   const [loading, setLoading] = useState(true);
   const [executiveSummary, setExecutiveSummary] = useState<string>("");
   const [summarizing, setSummarizing] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!id || !db) return;
     const fetchData = async () => {
       try {
         const assessmentSnap = await getDoc(doc(db, "assessments", id as string));
-        if (!assessmentSnap.exists()) return;
+        if (!assessmentSnap.exists()) {
+          setLoading(false);
+          return;
+        }
         const assessmentData = { id: assessmentSnap.id, ...assessmentSnap.data() } as Assessment;
         setAssessment(assessmentData);
 
@@ -59,7 +70,7 @@ export default function AssessmentResultsPage() {
         const runsSnap = await getDocs(q);
         setTestRuns(runsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as TestRun)));
       } catch (err) {
-        // Error handling is centralized via FirebaseErrorListener
+        console.error("Error fetching assessment results:", err);
       } finally {
         setLoading(false);
       }
@@ -125,7 +136,43 @@ export default function AssessmentResultsPage() {
     return "text-destructive";
   };
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen"><Loader2 className="w-8 h-8 animate-spin" /></div>;
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto mb-4" />
+        <p className="text-muted-foreground animate-pulse">Loading Audit Findings...</p>
+      </div>
+    </div>
+  );
+
+  if (!assessment) return (
+    <AuthGuard>
+      <Navbar />
+      <main className="container mx-auto px-4 py-24 text-center">
+        <div className="bg-muted/30 p-12 rounded-2xl max-w-lg mx-auto border border-border">
+          <ShieldAlert className="w-16 h-16 text-destructive mx-auto mb-6 opacity-50" />
+          <h2 className="text-2xl font-bold mb-2">Report Not Found</h2>
+          <p className="text-muted-foreground mb-8">
+            The assessment you're looking for doesn't exist or you don't have permission to view it.
+          </p>
+          <Button asChild>
+            <Link href="/dashboard">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Return to Dashboard
+            </Link>
+          </Button>
+        </div>
+      </main>
+    </AuthGuard>
+  );
+
+  // Safely format the date after mount to avoid hydration mismatch
+  const formattedDate = mounted && assessment?.createdAt 
+    ? assessment.createdAt.toDate().toLocaleDateString()
+    : "";
+  const formattedTime = mounted && assessment?.createdAt 
+    ? assessment.createdAt.toDate().toLocaleTimeString()
+    : "";
 
   return (
     <AuthGuard>
@@ -137,9 +184,9 @@ export default function AssessmentResultsPage() {
               <ShieldAlert className="w-6 h-6 text-primary" />
               <Badge variant="outline" className="text-primary border-primary">DISA Framework Audit</Badge>
             </div>
-            <h1 className="font-headline text-4xl font-bold">{system?.name} Audit Report</h1>
+            <h1 className="font-headline text-4xl font-bold">{system?.name || "AI System"} Audit Report</h1>
             <p className="text-muted-foreground mt-1">
-              Audit conducted on {assessment?.createdAt.toDate().toLocaleDateString()} • {assessment?.createdAt.toDate().toLocaleTimeString()}
+              Audit conducted on {formattedDate} • {formattedTime}
             </p>
           </div>
           <Button variant="outline" className="h-11 print:hidden" onClick={() => window.print()}>
@@ -176,9 +223,10 @@ export default function AssessmentResultsPage() {
               {executiveSummary ? (
                 <div className="animate-in fade-in duration-500 whitespace-pre-wrap">{executiveSummary}</div>
               ) : summarizing ? (
-                <div className="space-y-2">
-                  <div className="h-4 bg-muted animate-pulse rounded w-3/4"></div>
-                  <div className="h-4 bg-muted animate-pulse rounded w-5/6"></div>
+                <div className="space-y-4">
+                  <div className="h-4 bg-muted/50 animate-pulse rounded w-3/4"></div>
+                  <div className="h-4 bg-muted/50 animate-pulse rounded w-5/6"></div>
+                  <div className="h-4 bg-muted/50 animate-pulse rounded w-2/3"></div>
                 </div>
               ) : (
                 <p className="italic">Click "Generate AI Insights" to visualize the executive summary of this audit.</p>
