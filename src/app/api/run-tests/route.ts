@@ -1,47 +1,25 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { collection, addDoc, getDoc, doc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { computeDISAScore } from "@/lib/scoring";
-import { PersonaType, AISystem, TestRun, AccessibilityIssue } from "@/lib/types";
+import { PersonaType, AccessibilityIssue } from "@/lib/types";
 
 export const maxDuration = 60; // 60 seconds max
 
 /**
- * API route to simulate a DISA accessibility audit.
- * Note: Playwright was removed to ensure the prototype runs reliably without heavy dependencies.
+ * API route to simulate a DISA accessibility audit findings.
+ * This route no longer interacts with Firestore to comply with Client-Side Mutation rules.
+ * It returns raw simulation data which the client will then persist.
  */
 export async function POST(req: NextRequest) {
   try {
-    const { systemId, personas } = await req.json();
-    const authHeader = req.headers.get("Authorization");
+    const { personas } = await req.json();
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Basic validation
+    if (!personas || !Array.isArray(personas)) {
+      return NextResponse.json({ error: "Invalid personas provided" }, { status: 400 });
     }
-    
-    // Fetch system info
-    const systemRef = doc(db, "ai_systems", systemId);
-    const systemSnap = await getDoc(systemRef);
-    if (!systemSnap.exists()) return NextResponse.json({ error: "System not found" }, { status: 404 });
-    const system = systemSnap.data() as AISystem;
 
-    // Create assessment record
-    const assessmentRef = await addDoc(collection(db, "assessments"), {
-      systemId,
-      userId: system.userId,
-      createdAt: serverTimestamp(),
-      overallScore: 0
-    });
-
-    const testRunResults: TestRun[] = [];
-
-    // Simulate scanning for each persona
-    // In a production environment, this would use axe-core or playwright-axe
-    for (const persona of personas as PersonaType[]) {
-      // Add a small artificial delay to simulate a real scan
-      await new Promise(resolve => setTimeout(resolve, 800));
-
+    const testRunResults = (personas as PersonaType[]).map((persona) => {
+      // Simulation logic
       const success = Math.random() > 0.3; // 70% chance of success for mock
       let accessibilityIssues: AccessibilityIssue[] = [];
 
@@ -57,33 +35,16 @@ export async function POST(req: NextRequest) {
         ];
       }
 
-      const runDoc = await addDoc(collection(db, "testRuns"), {
-        assessmentId: assessmentRef.id,
+      return {
         persona,
         success,
-        accessibilityIssues,
-        createdAt: serverTimestamp()
-      });
+        accessibilityIssues
+      };
+    });
 
-      testRunResults.push({
-        id: runDoc.id,
-        assessmentId: assessmentRef.id,
-        persona,
-        success,
-        accessibilityIssues,
-        createdAt: serverTimestamp() as any
-      });
-    }
-
-    // Compute final DISA score based on the results
-    const finalScore = computeDISAScore(testRunResults);
-    
-    // Update the assessment with the final score
-    await updateDoc(assessmentRef, { overallScore: finalScore });
-
-    return NextResponse.json({ assessmentId: assessmentRef.id, score: finalScore });
+    return NextResponse.json({ results: testRunResults });
   } catch (error: any) {
-    console.error("Audit API Error:", error);
+    console.error("Audit Simulation API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

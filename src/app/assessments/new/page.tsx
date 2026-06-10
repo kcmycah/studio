@@ -4,8 +4,8 @@
 import { useState, useMemo } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { Navbar } from "@/components/navbar";
-import { useUser, useFirestore, useCollection, useAuth } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
+import { useUser, useFirestore, useCollection } from "@/firebase";
+import { collection, query, where, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { AISystem, PERSONAS, PersonaType } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -22,11 +22,13 @@ import {
 import { ShieldAlert, Play, Loader2, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { computeDISAScore } from "@/lib/scoring";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function NewAssessmentPage() {
   const { user } = useUser();
   const db = useFirestore();
-  const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   
@@ -34,7 +36,6 @@ export default function NewAssessmentPage() {
   const [selectedPersonas, setSelectedPersonas] = useState<PersonaType[]>([]);
   const [running, setRunning] = useState(false);
 
-  // Use real-time listener to ensure newly added systems appear immediately
   const systemsQuery = useMemo(() => {
     if (!db || !user) return null;
     return query(
@@ -54,7 +55,7 @@ export default function NewAssessmentPage() {
   };
 
   const handleRunTest = async () => {
-    if (!selectedSystem || selectedPersonas.length === 0) {
+    if (!selectedSystem || selectedPersonas.length === 0 || !user || !db) {
       toast({
         variant: "destructive",
         title: "Missing Configuration",
@@ -65,24 +66,63 @@ export default function NewAssessmentPage() {
 
     setRunning(true);
     try {
-      const idToken = await auth.currentUser?.getIdToken();
-      
+      // 1. Get Simulation Results from API
       const response = await fetch("/api/run-tests", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${idToken}`
-        },
-        body: JSON.stringify({
-          systemId: selectedSystem,
-          personas: selectedPersonas
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ personas: selectedPersonas })
       });
 
-      if (!response.ok) throw new Error("Failed to start tests");
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Failed to simulate tests");
+      }
 
-      const data = await response.json();
-      router.push(`/assessments/${data.assessmentId}/results`);
+      const { results } = await response.json();
+
+      // 2. Perform Client-Side Mutations (Persist to Firestore)
+      // Generate IDs optimistically to link documents without awaiting network roundtrips
+      const assessmentRef = doc(collection(db, "assessments"));
+      const score = computeDISAScore(results);
+
+      const assessmentData = {
+        systemId: selectedSystem,
+        userId: user.uid,
+        createdAt: serverTimestamp(),
+        overallScore: score
+      };
+
+      // Create Assessment
+      setDoc(assessmentRef, assessmentData)
+        .catch(async (err) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: assessmentRef.path,
+            operation: 'create',
+            requestResourceData: assessmentData
+          }));
+        });
+
+      // Create Individual Test Runs
+      results.forEach((res: any) => {
+        const runRef = doc(collection(db, "testRuns"));
+        const runData = {
+          ...res,
+          assessmentId: assessmentRef.id,
+          createdAt: serverTimestamp()
+        };
+        
+        setDoc(runRef, runData)
+          .catch(async (err) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: runRef.path,
+              operation: 'create',
+              requestResourceData: runData
+            }));
+          });
+      });
+
+      // Navigate to results immediately
+      router.push(`/assessments/${assessmentRef.id}/results`);
     } catch (err: any) {
       toast({
         variant: "destructive",
