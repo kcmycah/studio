@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useMemo } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { Navbar } from "@/components/navbar";
-import { useAuth, useFirestore, useUser } from "@/firebase";
-import { collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
+import { useUser, useFirestore, useCollection } from "@/firebase";
+import { collection, query, where, orderBy, limit } from "firebase/firestore";
 import { AISystem, Assessment } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,8 @@ import {
   Plus, 
   TrendingUp, 
   AlertCircle,
-  Activity
+  Activity,
+  Loader2
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -25,42 +26,30 @@ import { cn } from "@/lib/utils";
 export default function Dashboard() {
   const { user } = useUser();
   const db = useFirestore();
-  const [systems, setSystems] = useState<AISystem[]>([]);
-  const [latestAssessment, setLatestAssessment] = useState<Assessment | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user || !db) return;
+  const systemsQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(
+      collection(db, "ai_systems"),
+      where("userId", "==", user.uid)
+    );
+  }, [db, user]);
 
-    const fetchData = async () => {
-      try {
-        const systemsQuery = query(
-          collection(db, "ai_systems"),
-          where("userId", "==", user.uid)
-        );
-        const systemsSnap = await getDocs(systemsQuery);
-        const systemsList = systemsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AISystem));
-        setSystems(systemsList);
+  const assessmentsQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(
+      collection(db, "assessments"),
+      where("userId", "==", user.uid),
+      orderBy("createdAt", "desc"),
+      limit(1)
+    );
+  }, [db, user]);
 
-        const assessmentsQuery = query(
-          collection(db, "assessments"),
-          where("userId", "==", user.uid),
-          orderBy("createdAt", "desc"),
-          limit(1)
-        );
-        const assessmentsSnap = await getDocs(assessmentsQuery);
-        if (!assessmentsSnap.empty) {
-          setLatestAssessment({ id: assessmentsSnap.docs[0].id, ...assessmentsSnap.docs[0].data() } as Assessment);
-        }
-      } catch (err) {
-        // Centralized error handling handles this via the listener
-      } finally {
-        setLoading(false);
-      }
-    };
+  const { data: systems, loading: systemsLoading } = useCollection<AISystem>(systemsQuery);
+  const { data: assessments, loading: assessmentsLoading } = useCollection<Assessment>(assessmentsQuery);
 
-    fetchData();
-  }, [user, db]);
+  const latestAssessment = assessments?.[0] || null;
+  const loading = systemsLoading || assessmentsLoading;
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-emerald-400";
@@ -116,7 +105,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-6xl font-headline font-bold text-primary">
-                {systems.length}
+                {systems?.length || 0}
               </div>
               <p className="text-muted-foreground mt-2 text-sm">Active AI assistants monitored</p>
             </CardContent>
@@ -143,54 +132,60 @@ export default function Dashboard() {
           AI Systems Inventory
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {systems.map((system) => (
-            <Card key={system.id} className="glass-morphism border-primary/10 hover:border-primary/30 transition-all hover:shadow-xl hover:shadow-primary/5">
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <Badge variant="secondary" className="mb-2 uppercase text-[10px] tracking-widest font-bold">
-                    {system.type}
-                  </Badge>
-                  <Link href={system.url} target="_blank">
-                    <ExternalLink className="w-4 h-4 text-muted-foreground hover:text-primary transition-colors" />
-                  </Link>
-                </div>
-                <CardTitle className="font-headline text-xl">{system.name}</CardTitle>
-                <CardDescription className="line-clamp-1">{system.url}</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-4 flex justify-between items-center border-t border-primary/5 mt-4">
-                <div className="flex -space-x-2">
-                   {[1,2,3].map(i => (
-                     <div key={i} className="w-8 h-8 rounded-full border-2 border-card bg-muted flex items-center justify-center text-[10px] font-bold">P{i}</div>
-                   ))}
-                </div>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href={`/history?system=${system.id}`}>
-                    View History <ArrowRight className="w-4 h-4 ml-1" />
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {systems?.map((system) => (
+              <Card key={system.id} className="glass-morphism border-primary/10 hover:border-primary/30 transition-all hover:shadow-xl hover:shadow-primary/5">
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <Badge variant="secondary" className="mb-2 uppercase text-[10px] tracking-widest font-bold">
+                      {system.type}
+                    </Badge>
+                    <Link href={system.url} target="_blank">
+                      <ExternalLink className="w-4 h-4 text-muted-foreground hover:text-primary transition-colors" />
+                    </Link>
+                  </div>
+                  <CardTitle className="font-headline text-xl">{system.name}</CardTitle>
+                  <CardDescription className="line-clamp-1">{system.url}</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-4 flex justify-between items-center border-t border-primary/5 mt-4">
+                  <div className="flex -space-x-2">
+                    {[1,2,3].map(i => (
+                      <div key={i} className="w-8 h-8 rounded-full border-2 border-card bg-muted flex items-center justify-center text-[10px] font-bold">P{i}</div>
+                    ))}
+                  </div>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link href={`/history?system=${system.id}`}>
+                      View History <ArrowRight className="w-4 h-4 ml-1" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
 
-          {systems.length === 0 && !loading && (
-            <Card className="col-span-full border-dashed border-2 flex flex-col items-center justify-center p-12 text-center bg-transparent">
-              <div className="bg-muted p-4 rounded-full mb-4">
-                <AlertCircle className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <CardTitle className="mb-2">No AI Systems Added</CardTitle>
-              <CardDescription className="mb-6 max-w-sm">
-                Connect your first AI chatbot or assistant to start auditing for accessibility and fairness.
-              </CardDescription>
-              <Link href="/systems/new">
-                <Button>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add System
-                </Button>
-              </Link>
-            </Card>
-          )}
-        </div>
+            {systems?.length === 0 && (
+              <Card className="col-span-full border-dashed border-2 flex flex-col items-center justify-center p-12 text-center bg-transparent">
+                <div className="bg-muted p-4 rounded-full mb-4">
+                  <AlertCircle className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <CardTitle className="mb-2">No AI Systems Added</CardTitle>
+                <CardDescription className="mb-6 max-w-sm">
+                  Connect your first AI chatbot or assistant to start auditing for accessibility and fairness.
+                </CardDescription>
+                <Link href="/systems/new">
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add System
+                  </Button>
+                </Link>
+              </Card>
+            )}
+          </div>
+        )}
       </main>
     </AuthGuard>
   );
