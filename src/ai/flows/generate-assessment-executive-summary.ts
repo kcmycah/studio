@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A Genkit flow for generating a concise, non-technical executive summary of an AI system assessment.
@@ -71,34 +72,33 @@ const prompt = ai.definePrompt({
   name: 'executiveSummaryPrompt',
   input: { schema: AssessmentExecutiveSummaryInputSchema },
   output: { schema: AssessmentExecutiveSummaryOutputSchema },
-  prompt: `Generate a concise, non-technical executive summary for an AI system accessibility assessment.
+  prompt: `You are an expert accessibility consultant specializing in the DISA (Disability-Inclusive System Assessment) framework. 
+Generate a concise, non-technical executive summary for an AI system accessibility assessment.
 
-The AI system assessed is named: {{{systemName}}}.
+AI System: {{{systemName}}}
+Overall DISA Fairness Score: {{{overallScore}}} / 100
 
-Overall DISA Fairness Score: {{{overallScore}}} out of 100.
-
-Key Findings and Areas for Improvement:
+Detailed Findings:
 {{#each testRunSummaries}}
-  For the '{{{persona}}}' persona:
-  - Status: {{#if success}}Passed{{else}}Failed{{/if}}.
+- Persona: {{{persona}}}
+  Status: {{#if success}}Passed{{else}}Failed{{/if}}
   {{#if accessibilityIssues.length}}
-  - Identified accessibility issues:
+  Issues:
     {{#each accessibilityIssues}}
-      - Impact: {{{impact}}}, Description: {{{description}}}.
+    * [{{{impact}}}] {{{description}}}
     {{/each}}
   {{else}}
-  - No significant accessibility issues were found.
+  * No significant issues found for this persona.
   {{/if}}
-
 {{/each}}
 
-Based on the above findings, provide an executive summary that:
-1. Clearly states the overall performance of the AI system based on the DISA score.
-2. Highlights specific successes in tested personas.
-3. Identifies key areas for improvement, focusing on the most impactful accessibility issues across all personas without using overly technical jargon.
-4. Is suitable for stakeholders who need a quick understanding of the audit findings.
+Task: Provide a professional executive summary that stakeholders can understand.
+1. Evaluate the overall performance based on the score.
+2. Highlight specific successes in persona testing.
+3. Identify top critical/serious risks across all personas.
+4. Recommend high-level next steps for remediation.
 
-Present the summary as a single block of text under the heading "Executive Summary".`,
+Return the result as a single block of clear, readable text.`,
 });
 
 const assessmentExecutiveSummaryFlow = ai.defineFlow(
@@ -108,7 +108,13 @@ const assessmentExecutiveSummaryFlow = ai.defineFlow(
     outputSchema: AssessmentExecutiveSummaryOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
-    return output!;
+    try {
+      const { output } = await prompt(input);
+      if (!output) throw new Error("No output generated from AI model.");
+      return output;
+    } catch (error) {
+      console.error("Genkit Flow Error:", error);
+      throw error;
+    }
   }
 );

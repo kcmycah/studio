@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -105,10 +106,18 @@ export default function AssessmentResultsPage() {
   }, [testRuns]);
 
   const handleGenSummary = async () => {
-    if (!assessment || !system || testRuns.length === 0) return;
+    if (!assessment || !system || testRuns.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Incomplete Data",
+        description: "Cannot generate summary without test results."
+      });
+      return;
+    }
+    
     setSummarizing(true);
     try {
-      const summary = await generateAssessmentExecutiveSummary({
+      const result = await generateAssessmentExecutiveSummary({
         overallScore: assessment.overallScore,
         systemName: system.name,
         testRunSummaries: testRuns.map(run => ({
@@ -121,9 +130,14 @@ export default function AssessmentResultsPage() {
           }))
         }))
       });
-      setExecutiveSummary(summary.executiveSummary);
-    } catch (err) {
-      toast({ variant: "destructive", title: "AI Generation Failed", description: "Could not create summary." });
+      setExecutiveSummary(result.executiveSummary);
+    } catch (err: any) {
+      console.error("AI Generation Error:", err);
+      toast({ 
+        variant: "destructive", 
+        title: "AI Generation Failed", 
+        description: "The AI service is currently unavailable or timed out. Please try again." 
+      });
     } finally {
       setSummarizing(false);
     }
@@ -221,15 +235,16 @@ export default function AssessmentResultsPage() {
             </div>
             <div className="prose prose-invert max-w-none text-muted-foreground print:text-black">
               {executiveSummary ? (
-                <div className="animate-in fade-in duration-500 whitespace-pre-wrap">{executiveSummary}</div>
+                <div className="animate-in fade-in duration-500 whitespace-pre-wrap leading-relaxed">{executiveSummary}</div>
               ) : summarizing ? (
                 <div className="space-y-4">
                   <div className="h-4 bg-muted/50 animate-pulse rounded w-3/4"></div>
                   <div className="h-4 bg-muted/50 animate-pulse rounded w-5/6"></div>
                   <div className="h-4 bg-muted/50 animate-pulse rounded w-2/3"></div>
+                  <div className="h-4 bg-muted/50 animate-pulse rounded w-1/2"></div>
                 </div>
               ) : (
-                <p className="italic">Click "Generate AI Insights" to visualize the executive summary of this audit.</p>
+                <p className="italic">Click "Generate AI Insights" to visualize the executive summary of this audit. This may take up to 30 seconds.</p>
               )}
             </div>
           </Card>
