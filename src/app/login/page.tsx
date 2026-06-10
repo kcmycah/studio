@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -31,13 +32,17 @@ export default function LoginPage() {
         });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
+        toast({
+          title: "Welcome Back",
+          description: "Successfully signed in to your dashboard.",
+        });
       }
       router.push("/dashboard");
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Authentication Failed",
-        description: error.message,
+        description: error.message || "Please check your credentials and try again.",
       });
     } finally {
       setLoading(false);

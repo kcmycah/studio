@@ -1,10 +1,10 @@
+
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { Navbar } from "@/components/navbar";
-import { db, auth } from "@/lib/firebase";
-import { useAuth } from "@/components/auth-context";
+import { useUser, useFirestore, useAuth } from "@/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { AISystem, PERSONAS, PersonaType } from "@/lib/types";
 import { useRouter } from "next/navigation";
@@ -21,9 +21,12 @@ import {
 } from "@/components/ui/select";
 import { ShieldAlert, Play, Loader2, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 export default function NewAssessmentPage() {
-  const { user } = useAuth();
+  const { user } = useUser();
+  const db = useFirestore();
+  const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [systems, setSystems] = useState<AISystem[]>([]);
@@ -32,14 +35,14 @@ export default function NewAssessmentPage() {
   const [running, setRunning] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
     const fetchSystems = async () => {
       const q = query(collection(db, "ai_systems"), where("userId", "==", user.uid));
       const snap = await getDocs(q);
       setSystems(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AISystem)));
     };
     fetchSystems();
-  }, [user]);
+  }, [user, db]);
 
   const togglePersona = (persona: PersonaType) => {
     setSelectedPersonas(prev => 

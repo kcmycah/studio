@@ -1,9 +1,10 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { Navbar } from "@/components/navbar";
-import { db } from "@/lib/firebase";
+import { useFirestore } from "@/firebase";
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { AISystem, Assessment, TestRun, AccessibilityIssue } from "@/lib/types";
 import { useParams, useRouter } from "next/navigation";
@@ -16,16 +17,17 @@ import {
   XCircle, 
   AlertTriangle, 
   Info,
-  ChevronRight,
   Loader2,
   Sparkles
 } from "lucide-react";
 import { generatePersonaImpactExplanation } from "@/ai/flows/generate-persona-impact-explanation";
 import { generateAssessmentExecutiveSummary } from "@/ai/flows/generate-assessment-executive-summary";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 export default function AssessmentResultsPage() {
   const { id } = useParams();
+  const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
   const [assessment, setAssessment] = useState<Assessment | null>(null);
@@ -36,7 +38,7 @@ export default function AssessmentResultsPage() {
   const [summarizing, setSummarizing] = useState(false);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !db) return;
     const fetchData = async () => {
       try {
         const assessmentSnap = await getDoc(doc(db, "assessments", id as string));
@@ -59,7 +61,7 @@ export default function AssessmentResultsPage() {
       }
     };
     fetchData();
-  }, [id]);
+  }, [id, db]);
 
   const handleGenSummary = async () => {
     if (!assessment || !system || testRuns.length === 0) return;
