@@ -1,7 +1,8 @@
 
 /**
  * Firebase configuration object.
- * Values are pulled from environment variables defined in the .env file.
+ * Values are pulled from environment variables.
+ * In production, ensure these are set in your deployment environment.
  */
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -11,3 +12,10 @@ export const firebaseConfig = {
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
+
+// Simple validation to help debug configuration issues
+if (typeof window !== 'undefined' && !firebaseConfig.apiKey) {
+  console.warn(
+    'Firebase API Key is missing. Authentication will not work until you add your configuration to the .env file.'
+  );
+}
