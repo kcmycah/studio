@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A Genkit flow for generating a concise, non-technical executive summary of an AI system assessment.
@@ -9,6 +10,8 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+
+export const maxDuration = 60;
 
 const AssessmentExecutiveSummaryInputSchema = z.object({
   overallScore: z
