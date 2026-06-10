@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from "react";
@@ -6,18 +5,14 @@ import { useAuth, useUser } from "@/firebase";
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
-  GoogleAuthProvider, 
-  signInWithPopup,
-  sendPasswordResetEmail,
-  AuthCredential
+  sendPasswordResetEmail
 } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { ShieldCheck, Mail, Lock, Loader2, AlertCircle, ArrowRight } from "lucide-react";
+import { ShieldCheck, Mail, Lock, Loader2, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function LoginPage() {
@@ -26,7 +21,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
-  const [pendingCred, setPendingCred] = useState<AuthCredential | null>(null);
   const [errorHint, setErrorHint] = useState<string | null>(null);
   
   const router = useRouter();
@@ -36,10 +30,10 @@ export default function LoginPage() {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user && !userLoading && !pendingCred) {
+    if (user && !userLoading) {
       router.push("/dashboard");
     }
-  }, [user, userLoading, router, pendingCred]);
+  }, [user, userLoading, router]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,33 +102,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    const provider = new GoogleAuthProvider();
-    try {
-      const result = await signInWithPopup(auth, provider);
-      toast({ title: "Success", description: `Signed in as ${result.user.email}` });
-    } catch (error: any) {
-      console.error("Google Auth Error:", error.code);
-      if (error.code === "auth/account-exists-with-different-credential") {
-        setPendingCred(error.credential);
-        toast({
-          variant: "destructive",
-          title: "Account Exists",
-          description: "This email is already linked to a password account. Sign in with your password first.",
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Google Sign-In Failed",
-          description: error.message || "An error occurred during Google sign-in.",
-        });
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (userLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -153,7 +120,7 @@ export default function LoginPage() {
           <div className="space-y-1">
             <CardTitle className="font-headline text-3xl">AuditAccess</CardTitle>
             <CardDescription className="text-muted-foreground">
-              {pendingCred ? "Link your account" : isSignUp ? "Create your workspace" : "Welcome back to your dashboard"}
+              {isSignUp ? "Create your workspace" : "Welcome back to your dashboard"}
             </CardDescription>
           </div>
         </CardHeader>
@@ -182,89 +149,52 @@ export default function LoginPage() {
                 />
               </div>
             </div>
-            {!pendingCred && (
-              <div className="space-y-2">
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    type="password"
-                    placeholder="Password"
-                    className="pl-10 h-11"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                {!isSignUp && (
-                  <div className="flex justify-end">
-                    <Button 
-                      type="button" 
-                      variant="link" 
-                      size="sm" 
-                      className="px-0 h-auto text-xs text-muted-foreground hover:text-primary"
-                      onClick={handleResetPassword}
-                      disabled={resetLoading}
-                    >
-                      {resetLoading ? "Sending..." : "Forgot password?"}
-                    </Button>
-                  </div>
-                )}
+            <div className="space-y-2">
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="password"
+                  placeholder="Password"
+                  className="pl-10 h-11"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
               </div>
-            )}
+              {!isSignUp && (
+                <div className="flex justify-end">
+                  <Button 
+                    type="button" 
+                    variant="link" 
+                    size="sm" 
+                    className="px-0 h-auto text-xs text-muted-foreground hover:text-primary"
+                    onClick={handleResetPassword}
+                    disabled={resetLoading}
+                  >
+                    {resetLoading ? "Sending..." : "Forgot password?"}
+                  </Button>
+                </div>
+              )}
+            </div>
             <Button className="w-full h-12 text-lg font-medium shadow-lg shadow-primary/20" disabled={loading}>
               {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
-              {pendingCred ? "Link Account" : isSignUp ? "Create Account" : "Sign In"}
+              {isSignUp ? "Create Account" : "Sign In"}
             </Button>
           </form>
-
-          {!pendingCred && (
-            <>
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <Separator />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground font-semibold">Or continue with</span>
-                </div>
-              </div>
-
-              <Button 
-                variant="outline" 
-                className="w-full h-12 font-medium border-primary/20 hover:bg-primary/5" 
-                onClick={handleGoogleSignIn}
-                disabled={loading}
-              >
-                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                </svg>
-                Google
-              </Button>
-            </>
-          )}
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
-          {!pendingCred && (
-            <div className="text-sm text-center text-muted-foreground">
-              {isSignUp ? "Already have an account?" : "Don't have an account yet?"}{" "}
-              <button
-                onClick={() => {
-                  setIsSignUp(!isSignUp);
-                  setErrorHint(null);
-                }}
-                className="text-primary hover:underline font-bold"
-              >
-                {isSignUp ? "Sign In" : "Sign Up"}
-              </button>
-            </div>
-          )}
-          {pendingCred && (
-            <Button variant="ghost" size="sm" onClick={() => setPendingCred(null)}>
-              Cancel Linking
-            </Button>
-          )}
+          <div className="text-sm text-center text-muted-foreground">
+            {isSignUp ? "Already have an account?" : "Don't have an account yet?"}{" "}
+            <button
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setErrorHint(null);
+              }}
+              className="text-primary hover:underline font-bold"
+            >
+              {isSignUp ? "Sign In" : "Sign Up"}
+            </button>
+          </div>
         </CardFooter>
       </Card>
     </div>
