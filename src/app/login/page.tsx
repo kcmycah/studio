@@ -7,7 +7,8 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   GoogleAuthProvider, 
-  signInWithPopup 
+  signInWithRedirect,
+  getRedirectResult
 } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -25,13 +26,37 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const auth = useAuth();
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
+
+  // Handle Sign-In Redirect Result
+  useEffect(() => {
+    if (auth) {
+      getRedirectResult(auth)
+        .then((result) => {
+          if (result) {
+            toast({
+              title: "Welcome Back",
+              description: "Successfully signed in with Google.",
+            });
+            router.push("/dashboard");
+          }
+        })
+        .catch((error) => {
+          console.error("Redirect Result Error:", error);
+          toast({
+            variant: "destructive",
+            title: "Authentication Failed",
+            description: error.message || "An error occurred during Google sign-in.",
+          });
+        });
+    }
+  }, [auth, router, toast]);
 
   useEffect(() => {
-    if (user) {
+    if (user && !userLoading) {
       router.push("/dashboard");
     }
-  }, [user, router]);
+  }, [user, userLoading, router]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,26 +90,28 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     const provider = new GoogleAuthProvider();
-    // Request read-only access to the user's contacts
     provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
     
     try {
-      await signInWithPopup(auth, provider);
-      toast({
-        title: "Welcome Back",
-        description: "Signed in with Google.",
-      });
-      router.push("/dashboard");
+      // Using signInWithRedirect as requested
+      await signInWithRedirect(auth, provider);
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Google Sign-In Failed",
-        description: error.message || "An error occurred during Google sign-in.",
+        description: error.message || "An error occurred while initiating Google sign-in.",
       });
-    } finally {
       setLoading(false);
     }
   };
+
+  if (userLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-background to-background">
