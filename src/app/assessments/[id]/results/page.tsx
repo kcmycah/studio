@@ -5,12 +5,13 @@ import { AuthGuard } from "@/components/auth-guard";
 import { Navbar } from "@/components/navbar";
 import { useFirestore } from "@/firebase";
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
-import { AISystem, Assessment, TestRun, AccessibilityIssue } from "@/lib/types";
-import { useParams, useRouter } from "next/navigation";
+import { AISystem, Assessment, TestRun } from "@/lib/types";
+import { useParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { 
   FileDown, 
   CheckCircle2, 
@@ -25,6 +26,10 @@ import { generateAssessmentExecutiveSummary } from "@/ai/flows/generate-assessme
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
+/**
+ * Assessment Results Page
+ * Displays the findings of a DISA audit including aggregated issues and AI-generated summary.
+ */
 export default function AssessmentResultsPage() {
   const { id } = useParams();
   const db = useFirestore();
@@ -54,7 +59,7 @@ export default function AssessmentResultsPage() {
         const runsSnap = await getDocs(q);
         setTestRuns(runsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as TestRun)));
       } catch (err) {
-        console.error(err);
+        // Error handling is centralized via FirebaseErrorListener
       } finally {
         setLoading(false);
       }
@@ -62,7 +67,7 @@ export default function AssessmentResultsPage() {
     fetchData();
   }, [id, db]);
 
-  // Aggregated issues logic
+  // Aggregate issues from all test runs
   const topIssues = useMemo(() => {
     const issuesMap = new Map<string, { impact: string; count: number; description: string }>();
     testRuns.forEach(run => {
@@ -107,7 +112,7 @@ export default function AssessmentResultsPage() {
       });
       setExecutiveSummary(summary.executiveSummary);
     } catch (err) {
-      toast({ variant: "destructive", title: "AI Generation Failed" });
+      toast({ variant: "destructive", title: "AI Generation Failed", description: "Could not create summary." });
     } finally {
       setSummarizing(false);
     }
@@ -133,7 +138,9 @@ export default function AssessmentResultsPage() {
               <Badge variant="outline" className="text-primary border-primary">DISA Framework Audit</Badge>
             </div>
             <h1 className="font-headline text-4xl font-bold">{system?.name} Audit Report</h1>
-            <p className="text-muted-foreground mt-1">Audit conducted on {assessment?.createdAt.toDate().toLocaleDateString()} • {assessment?.createdAt.toDate().toLocaleTimeString()}</p>
+            <p className="text-muted-foreground mt-1">
+              Audit conducted on {assessment?.createdAt.toDate().toLocaleDateString()} • {assessment?.createdAt.toDate().toLocaleTimeString()}
+            </p>
           </div>
           <Button variant="outline" className="h-11 print:hidden" onClick={() => window.print()}>
             <FileDown className="w-4 h-4 mr-2" />
@@ -147,7 +154,9 @@ export default function AssessmentResultsPage() {
             <div className={cn("text-8xl font-headline font-bold", getScoreColor(assessment?.overallScore || 0))}>
               {assessment?.overallScore}
             </div>
-            <div className="mt-4 px-4 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold print:border print:border-primary">FAIRNESS RATING: {assessment && assessment.overallScore >= 60 ? "STABLE" : "IMPROVEMENT NEEDED"}</div>
+            <div className="mt-4 px-4 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold print:border print:border-primary">
+              FAIRNESS RATING: {assessment && assessment.overallScore >= 60 ? "STABLE" : "IMPROVEMENT NEEDED"}
+            </div>
           </Card>
 
           <Card className="md:col-span-2 glass-morphism border-primary/20 p-6 print:border-border print:bg-white print:text-black">
@@ -263,10 +272,6 @@ export default function AssessmentResultsPage() {
           .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
         }
       `}</style>
-    </Guard>
+    </AuthGuard>
   );
-}
-
-function Guard({ children }: { children: React.ReactNode }) {
-  return <AuthGuard>{children}</AuthGuard>;
 }
