@@ -6,8 +6,8 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { FirebaseErrorListener } from '@/components/firebase-error-listener';
 
 export const metadata: Metadata = {
-  title: 'AuditAccess - Inclusive AI Audit Pipeline',
-  description: 'Auditing AI systems for accessibility and fairness.',
+  title: 'DISA Audit - Inclusive AI Audit Pipeline',
+  description: 'Auditing AI systems for accessibility and fairness using the DISA framework.',
 };
 
 export default function RootLayout({

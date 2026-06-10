@@ -43,7 +43,7 @@ export default function LoginPage() {
     try {
       if (isSignUp) {
         await createUserWithEmailAndPassword(auth, email, password);
-        toast({ title: "Account Created", description: "Welcome to AuditAccess!" });
+        toast({ title: "Account Created", description: "Welcome to DISA Audit!" });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
         toast({ title: "Welcome Back", description: "Successfully signed in." });
@@ -124,7 +124,7 @@ export default function LoginPage() {
             <ShieldCheck className="w-12 h-12 text-primary" />
           </div>
           <div className="space-y-1">
-            <CardTitle className="font-headline text-3xl">AuditAccess</CardTitle>
+            <CardTitle className="font-headline text-3xl">DISA Audit</CardTitle>
             <CardDescription className="text-muted-foreground">
               {isSignUp ? "Create your workspace" : "Welcome back to your dashboard"}
             </CardDescription>

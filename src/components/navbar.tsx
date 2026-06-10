@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -49,7 +50,7 @@ export const Navbar = () => {
       <div className="container flex h-16 items-center justify-between mx-auto px-4">
         <Link href="/dashboard" className="flex items-center gap-2">
           <ShieldCheck className="w-8 h-8 text-primary" />
-          <span className="font-headline text-xl font-bold tracking-tight">AuditAccess</span>
+          <span className="font-headline text-xl font-bold tracking-tight">DISA Audit</span>
         </Link>
 
         <div className="hidden md:flex items-center gap-6">

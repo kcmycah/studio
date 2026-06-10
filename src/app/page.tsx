@@ -27,7 +27,7 @@ export default function LandingPage() {
     <div className="flex items-center justify-center min-h-screen bg-background">
       <div className="text-center">
         <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto mb-4" />
-        <p className="text-muted-foreground animate-pulse">Initializing AuditAccess...</p>
+        <p className="text-muted-foreground animate-pulse">Initializing DISA Audit...</p>
       </div>
     </div>
   );
