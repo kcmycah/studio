@@ -1,18 +1,22 @@
 
-"use client";
+'use client';
 
-import { useUser } from "@/firebase";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { useUser } from '@/firebase';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 
+/**
+ * Wrapper component to protect routes. 
+ * Redirects to /login if the user is not authenticated.
+ */
 export const AuthGuard = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useUser();
   const router = useRouter();
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push("/login");
+      router.push('/login');
     }
   }, [user, loading, router]);
 

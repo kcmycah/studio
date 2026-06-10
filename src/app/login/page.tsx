@@ -1,8 +1,8 @@
 
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useAuth } from "@/firebase";
+import { useState, useEffect } from "react";
+import { useAuth, useUser } from "@/firebase";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,14 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const auth = useAuth();
+  const { user } = useUser();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      router.push("/dashboard");
+    }
+  }, [user, router]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,13 +36,13 @@ export default function LoginPage() {
         await createUserWithEmailAndPassword(auth, email, password);
         toast({
           title: "Account Created",
-          description: "Welcome to AuditAccess! Your workspace is ready.",
+          description: "Welcome to AuditAccess!",
         });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
         toast({
           title: "Welcome Back",
-          description: "Successfully signed in to your dashboard.",
+          description: "Successfully signed in.",
         });
       }
       router.push("/dashboard");
@@ -42,7 +50,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Authentication Failed",
-        description: error.message || "Please check your credentials and try again.",
+        description: error.message || "Please check your credentials.",
       });
     } finally {
       setLoading(false);
@@ -59,7 +67,7 @@ export default function LoginPage() {
           <div className="space-y-1">
             <CardTitle className="font-headline text-3xl">AuditAccess</CardTitle>
             <CardDescription className="text-muted-foreground">
-              {isSignUp ? "Create your workspace" : "Welcome back to your dashboard"}
+              {isSignUp ? "Create your workspace" : "Sign in to your dashboard"}
             </CardDescription>
           </div>
         </CardHeader>
