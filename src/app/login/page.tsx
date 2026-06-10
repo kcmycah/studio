@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from "react";
@@ -29,7 +30,6 @@ export default function LoginPage() {
   const auth = useAuth();
   const { user, loading: userLoading } = useUser();
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user && !userLoading) {
       router.push("/dashboard");
@@ -50,9 +50,11 @@ export default function LoginPage() {
       }
     } catch (error: any) {
       let message = "An error occurred during authentication.";
-      console.error("Auth Error Code:", error.code);
-
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+      
+      if (error.code === 'auth/network-request-failed') {
+        message = "Network request failed. Please check your internet connection and disable any ad-blockers.";
+        setErrorHint("Troubleshooting Tip: If you are using an ad-blocker or VPN, please try disabling them. Also, ensure your current URL is added to 'Authorized Domains' in the Firebase Console.");
+      } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
         message = "Incorrect email or password. Please try again.";
       } else if (error.code === 'auth/email-already-in-use') {
         message = "This email is already registered.";
@@ -85,6 +87,7 @@ export default function LoginPage() {
     }
 
     setResetLoading(true);
+    setErrorHint(null);
     try {
       await sendPasswordResetEmail(auth, email);
       toast({
@@ -92,11 +95,17 @@ export default function LoginPage() {
         description: `A password reset email has been sent to ${email}.`,
       });
     } catch (error: any) {
-      console.error("Reset Error:", error.code);
+      let message = "Could not send reset email. Please ensure the email is correct.";
+      
+      if (error.code === 'auth/network-request-failed') {
+        message = "Network error. Please check your connection or authorized domains.";
+        setErrorHint("Troubleshooting Tip: Ensure your current domain is whitelisted in Firebase Console > Authentication > Settings > Authorized Domains.");
+      }
+
       toast({
         variant: "destructive",
         title: "Reset Failed",
-        description: "Could not send reset email. Please ensure the email is correct.",
+        description: message,
       });
     } finally {
       setResetLoading(false);
@@ -130,7 +139,7 @@ export default function LoginPage() {
             <Alert className="bg-primary/5 border-primary/20 text-primary animate-in fade-in slide-in-from-top-1 duration-300">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Notice</AlertTitle>
-              <AlertDescription className="flex flex-col gap-2">
+              <AlertDescription className="text-xs">
                 {errorHint}
               </AlertDescription>
             </Alert>
