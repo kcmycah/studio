@@ -1,0 +1,70 @@
+
+{
+  "entities": {
+    "AISystem": {
+      "title": "AI System",
+      "description": "An AI endpoint or assistant being monitored for accessibility.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "url": { "type": "string" },
+        "type": { "type": "string", "enum": ["Chatbot", "Voice Assistant"] },
+        "createdAt": { "type": "object", "format": "date-time" }
+      },
+      "required": ["userId", "name", "url", "type"]
+    },
+    "Assessment": {
+      "title": "Assessment",
+      "description": "A specific audit run for an AI system.",
+      "type": "object",
+      "properties": {
+        "systemId": { "type": "string" },
+        "userId": { "type": "string" },
+        "overallScore": { "type": "number" },
+        "createdAt": { "type": "object", "format": "date-time" }
+      },
+      "required": ["systemId", "userId", "overallScore"]
+    },
+    "TestRun": {
+      "title": "Test Run",
+      "description": "A per-persona breakdown of a specific assessment.",
+      "type": "object",
+      "properties": {
+        "assessmentId": { "type": "string" },
+        "persona": { "type": "string" },
+        "success": { "type": "boolean" },
+        "accessibilityIssues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "impact": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "createdAt": { "type": "object", "format": "date-time" }
+      },
+      "required": ["assessmentId", "persona", "success"]
+    }
+  },
+  "auth": {
+    "providers": ["password"]
+  },
+  "firestore": {
+    "/ai_systems/{systemId}": {
+      "schema": "AISystem",
+      "description": "Inventory of AI systems per user."
+    },
+    "/assessments/{assessmentId}": {
+      "schema": "Assessment",
+      "description": "Record of fairness audits performed."
+    },
+    "/testRuns/{runId}": {
+      "schema": "TestRun",
+      "description": "Individual persona test results for an assessment."
+    }
+  }
+}
