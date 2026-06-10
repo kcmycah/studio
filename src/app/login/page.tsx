@@ -52,18 +52,14 @@ export default function LoginPage() {
       let message = "An error occurred during authentication.";
       
       if (error.code === 'auth/network-request-failed') {
-        message = "Network request failed. Please check your internet connection and disable any ad-blockers.";
-        setErrorHint("Troubleshooting Tip: If you are using an ad-blocker or VPN, please try disabling them. Also, ensure your current URL is added to 'Authorized Domains' in the Firebase Console.");
+        message = "Network request failed. This is often caused by an ad-blocker or missing authorized domain.";
+        setErrorHint("Troubleshooting: 1. Disable extensions like uBlock or AdBlock. 2. Check that your current domain is in Firebase Console > Authentication > Settings > Authorized Domains.");
       } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
         message = "Incorrect email or password. Please try again.";
       } else if (error.code === 'auth/email-already-in-use') {
         message = "This email is already registered.";
         setErrorHint("You already have an account! Please switch to 'Sign In'.");
         setIsSignUp(false);
-      } else if (error.code === 'auth/weak-password') {
-        message = "Password is too weak. Please use at least 6 characters.";
-      } else if (error.code === 'auth/too-many-requests') {
-        message = "Too many failed attempts. Please try again later or reset your password.";
       }
       
       toast({
@@ -95,11 +91,11 @@ export default function LoginPage() {
         description: `A password reset email has been sent to ${email}.`,
       });
     } catch (error: any) {
-      let message = "Could not send reset email. Please ensure the email is correct.";
+      let message = "Could not send reset email.";
       
       if (error.code === 'auth/network-request-failed') {
-        message = "Network error. Please check your connection or authorized domains.";
-        setErrorHint("Troubleshooting Tip: Ensure your current domain is whitelisted in Firebase Console > Authentication > Settings > Authorized Domains.");
+        message = "Network error. Please disable your ad-blocker and try again.";
+        setErrorHint("If you use extensions like uBlock Origin or AdGuard, click their icon in the browser toolbar and turn them 'Off' for this site, then refresh.");
       }
 
       toast({
@@ -138,7 +134,7 @@ export default function LoginPage() {
           {errorHint && (
             <Alert className="bg-primary/5 border-primary/20 text-primary animate-in fade-in slide-in-from-top-1 duration-300">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Notice</AlertTitle>
+              <AlertTitle>Troubleshooting Tip</AlertTitle>
               <AlertDescription className="text-xs">
                 {errorHint}
               </AlertDescription>
@@ -180,16 +176,14 @@ export default function LoginPage() {
               </div>
               {!isSignUp && (
                 <div className="flex justify-end">
-                  <Button 
+                  <button 
                     type="button" 
-                    variant="link" 
-                    size="sm" 
-                    className="px-0 h-auto text-xs text-muted-foreground hover:text-primary"
+                    className="text-xs text-muted-foreground hover:text-primary transition-colors underline-offset-4 hover:underline"
                     onClick={handleResetPassword}
                     disabled={resetLoading}
                   >
                     {resetLoading ? "Sending..." : "Forgot password?"}
-                  </Button>
+                  </button>
                 </div>
               )}
             </div>

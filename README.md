@@ -1,28 +1,25 @@
 
 # AuditAccess - Inclusive AI Audit Pipeline
 
-This is a Next.js application built to audit AI systems for accessibility and fairness.
+This application audits AI systems for accessibility and fairness using automated scans and AI-powered insights.
 
-## Getting Started
+## Troubleshooting Connection Issues
 
-1. **Firebase Setup**: 
-   - Create a project in the [Firebase Console](https://console.firebase.google.com/).
-   - Enable **Authentication** (Email/Password).
-   - Create a **Firestore** database.
-   - Go to **Project Settings**, add a Web App, and copy the `firebaseConfig` values.
+If you encounter a **"Network Request Failed"** error when signing in or resetting your password:
 
-2. **Environment Variables**:
-   - Open the `.env` file in this project.
-   - Replace the placeholders with the values you copied from the Firebase Console.
+1.  **Disable Ad-blockers**: Extensions like **uBlock Origin**, **AdBlock**, or **AdGuard** can block Firebase's authentication requests. 
+    - Click the extension icon in your browser toolbar.
+    - Click the "Power" icon or toggle switch to disable it for this site.
+    - Refresh the page and try again.
+2.  **Authorized Domains**: Ensure your current URL (e.g., `*.cloudworkstations.dev`) is added to the "Authorized Domains" list in the Firebase Console:
+    - Go to **Authentication** > **Settings** > **Authorized Domains**.
+    - Click **Add Domain** and enter your current site's root domain.
 
-3. **Troubleshooting "Network Request Failed"**:
-   - If you encounter a network error during sign-in or password reset:
-     1. **Disable Ad-blockers**: Some ad-blockers block Firebase Auth requests.
-     2. **Authorized Domains**: Go to Firebase Console > Authentication > Settings > Authorized Domains. Ensure your current domain (e.g., `*.cloudworkstations.dev`) is added to the list.
+## Setup
 
-4. **Run the App**:
-   - The app will automatically reload once you save the `.env` file.
-   - Navigate to `/login` to create your first account.
+1.  **Firebase Project**: Ensure you have a project at [Firebase Console](https://console.firebase.google.com/).
+2.  **Environment Variables**: Fill out the `.env` file with your configuration from **Project Settings**.
+3.  **Enable Auth**: Go to **Authentication** > **Sign-in method** and enable **Email/Password**.
 
 ## Features
 
