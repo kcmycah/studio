@@ -32,6 +32,7 @@ export default function LoginPage() {
   const auth = useAuth();
   const { user, loading: userLoading } = useUser();
 
+  // Redirect if already logged in
   useEffect(() => {
     if (user && !userLoading && !pendingCred) {
       router.push("/dashboard");
@@ -50,27 +51,32 @@ export default function LoginPage() {
         await signInWithEmailAndPassword(auth, email, password);
         toast({ title: "Welcome Back", description: "Successfully signed in." });
       }
-      router.push("/dashboard");
+      // Redirect happens in the useEffect above
     } catch (error: any) {
       let message = "An error occurred during authentication.";
-      console.error("Auth Error:", error.code, error.message);
+      console.error("Auth Error Code:", error.code);
+      console.error("Auth Error Message:", error.message);
 
-      if (error.code === 'auth/invalid-api-key' || error.code === 'auth/invalid-credential') {
-        message = "Firebase configuration is incorrect. Please check your keys.";
-      } else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-login-credentials') {
-        message = "Invalid email or password. Please try again.";
+      if (error.code === 'auth/invalid-api-key' || error.code === 'auth/invalid-credential' && !isSignUp) {
+        message = "Incorrect email or password. Please try again.";
+      } else if (error.code === 'auth/user-not-found') {
+        message = "No account found with this email. Try signing up instead.";
+        setErrorHint("If you don't have an account yet, please switch to 'Sign Up'.");
+      } else if (error.code === 'auth/wrong-password') {
+        message = "Incorrect password. Please try again.";
       } else if (error.code === 'auth/email-already-in-use') {
         message = "This email is already registered.";
-        setErrorHint("It looks like you already have an account. Try signing in instead.");
-      } else if (error.code === 'auth/operation-not-allowed') {
-        message = "Email/Password sign-in is not enabled in the Firebase Console.";
+        setErrorHint("You already have an account! Please switch to 'Sign In' to enter your workspace.");
+        setIsSignUp(false); // Automatically switch to sign in for convenience
       } else if (error.code === 'auth/network-request-failed') {
-        message = "Network error. Please check your connection.";
+        message = "Network error. Please check your internet connection.";
+      } else if (error.code === 'auth/weak-password') {
+        message = "Password is too weak. Please use at least 6 characters.";
       }
       
       toast({
         variant: "destructive",
-        title: "Authentication Failed",
+        title: isSignUp ? "Sign Up Failed" : "Sign In Failed",
         description: message,
       });
     } finally {
@@ -84,15 +90,14 @@ export default function LoginPage() {
     try {
       const result = await signInWithPopup(auth, provider);
       toast({ title: "Success", description: `Signed in as ${result.user.email}` });
-      router.push("/dashboard");
     } catch (error: any) {
-      console.error("Google Auth Error:", error.code, error.message);
+      console.error("Google Auth Error:", error.code);
       if (error.code === "auth/account-exists-with-different-credential") {
         setPendingCred(error.credential);
         toast({
           variant: "destructive",
           title: "Account Exists",
-          description: "This email is used with a different sign-in method. Sign in with your password to link them.",
+          description: "This email is already linked to a password account. Sign in with your password first.",
         });
       } else {
         toast({
@@ -124,30 +129,17 @@ export default function LoginPage() {
           <div className="space-y-1">
             <CardTitle className="font-headline text-3xl">AuditAccess</CardTitle>
             <CardDescription className="text-muted-foreground">
-              {pendingCred ? "Link your account" : isSignUp ? "Create your workspace" : "Sign in to your dashboard"}
+              {pendingCred ? "Link your account" : isSignUp ? "Create your workspace" : "Welcome back to your dashboard"}
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {errorHint && (
-            <Alert className="bg-primary/5 border-primary/20 text-primary">
+            <Alert className="bg-primary/5 border-primary/20 text-primary animate-in fade-in slide-in-from-top-1 duration-300">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Notice</AlertTitle>
               <AlertDescription className="flex flex-col gap-2">
                 {errorHint}
-                <Button variant="link" size="sm" className="p-0 h-auto justify-start text-primary font-bold" onClick={() => setIsSignUp(false)}>
-                  Switch to Sign In <ArrowRight className="w-3 h-3 ml-1" />
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {pendingCred && (
-            <Alert variant="destructive" className="bg-destructive/10 border-destructive/20">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Account Linking Required</AlertTitle>
-              <AlertDescription>
-                Sign in with your email/password to link your Google account.
               </AlertDescription>
             </Alert>
           )}
@@ -192,7 +184,7 @@ export default function LoginPage() {
                   <Separator />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+                  <span className="bg-background px-2 text-muted-foreground font-semibold">Or continue with</span>
                 </div>
               </div>
 
@@ -216,10 +208,13 @@ export default function LoginPage() {
         <CardFooter className="flex flex-col gap-4">
           {!pendingCred && (
             <div className="text-sm text-center text-muted-foreground">
-              {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
+              {isSignUp ? "Already have an account?" : "Don't have an account yet?"}{" "}
               <button
-                onClick={() => setIsSignUp(!isSignUp)}
-                className="text-primary hover:underline font-semibold"
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setErrorHint(null);
+                }}
+                className="text-primary hover:underline font-bold"
               >
                 {isSignUp ? "Sign In" : "Sign Up"}
               </button>
