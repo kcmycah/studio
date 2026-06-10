@@ -28,7 +28,6 @@ import { FirestorePermissionError } from '@/firebase/errors';
  * Uses optimistic mutation pattern to avoid "buffering" or hanging UI.
  */
 export default function NewSystemPage() {
-  const { user } = user; // This is incorrect, should be useUser()
   const { user: currentUser } = useUser();
   const db = useFirestore();
   const router = useRouter();
