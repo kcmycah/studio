@@ -109,6 +109,7 @@ const assessmentExecutiveSummaryFlow = ai.defineFlow(
   },
   async (input) => {
     try {
+      // Use the global ai object which has the correct model configured
       const { output } = await prompt(input);
       if (!output) throw new Error("No output generated from AI model.");
       return output;
