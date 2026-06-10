@@ -8,7 +8,6 @@ import {
   createUserWithEmailAndPassword, 
   GoogleAuthProvider, 
   signInWithPopup,
-  linkWithCredential,
   AuthCredential
 } from "firebase/auth";
 import { useRouter } from "next/navigation";
@@ -52,14 +51,18 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (error: any) {
       let message = "An error occurred during authentication.";
-      if (error.code === 'auth/invalid-api-key') {
-        message = "Firebase is not configured correctly. Please check your .env file.";
-      } else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+      console.error("Auth Error:", error.code, error.message);
+
+      if (error.code === 'auth/invalid-api-key' || error.code === 'auth/invalid-credential') {
+        message = "Firebase configuration is incorrect. Please check your keys.";
+      } else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-login-credentials') {
         message = "Invalid email or password.";
       } else if (error.code === 'auth/email-already-in-use') {
         message = "This email is already registered. Try signing in instead.";
       } else if (error.code === 'auth/operation-not-allowed') {
-        message = "This sign-in method is not enabled in the Firebase Console.";
+        message = "This sign-in method is not enabled in the Firebase Console (Authentication > Sign-in method).";
+      } else if (error.code === 'auth/network-request-failed') {
+        message = "Network error. Please check your internet connection.";
       }
       
       toast({
@@ -75,17 +78,25 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     const provider = new GoogleAuthProvider();
+    // Add scopes if needed: provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
     try {
       const result = await signInWithPopup(auth, provider);
       toast({ title: "Success", description: `Signed in as ${result.user.email}` });
       router.push("/dashboard");
     } catch (error: any) {
+      console.error("Google Auth Error:", error.code, error.message);
       if (error.code === "auth/account-exists-with-different-credential") {
         setPendingCred(error.credential);
         toast({
           variant: "destructive",
           title: "Account Exists",
           description: "This email is used with a different sign-in method. Sign in with your password to link them.",
+        });
+      } else if (error.code === 'auth/operation-not-allowed') {
+        toast({
+          variant: "destructive",
+          title: "Google Sign-In Disabled",
+          description: "Google provider is not enabled in your Firebase Console.",
         });
       } else {
         toast({
