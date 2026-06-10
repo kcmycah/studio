@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { Navbar } from "@/components/navbar";
-import { useUser, useFirestore, useAuth } from "@/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { useUser, useFirestore, useCollection, useAuth } from "@/firebase";
+import { collection, query, where } from "firebase/firestore";
 import { AISystem, PERSONAS, PersonaType } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -29,20 +29,21 @@ export default function NewAssessmentPage() {
   const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const [systems, setSystems] = useState<AISystem[]>([]);
+  
   const [selectedSystem, setSelectedSystem] = useState<string>("");
   const [selectedPersonas, setSelectedPersonas] = useState<PersonaType[]>([]);
   const [running, setRunning] = useState(false);
 
-  useEffect(() => {
-    if (!user || !db) return;
-    const fetchSystems = async () => {
-      const q = query(collection(db, "ai_systems"), where("userId", "==", user.uid));
-      const snap = await getDocs(q);
-      setSystems(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AISystem)));
-    };
-    fetchSystems();
-  }, [user, db]);
+  // Use real-time listener to ensure newly added systems appear immediately
+  const systemsQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(
+      collection(db, "ai_systems"),
+      where("userId", "==", user.uid)
+    );
+  }, [db, user]);
+
+  const { data: systems, loading: systemsLoading } = useCollection<AISystem>(systemsQuery);
 
   const togglePersona = (persona: PersonaType) => {
     setSelectedPersonas(prev => 
@@ -109,14 +110,20 @@ export default function NewAssessmentPage() {
           <CardContent className="space-y-10">
             <div className="space-y-4">
               <Label className="text-lg font-semibold">Step 1: Select AI System</Label>
-              <Select value={selectedSystem} onValueChange={setSelectedSystem}>
+              <Select value={selectedSystem} onValueChange={setSelectedSystem} disabled={systemsLoading}>
                 <SelectTrigger className="h-12 text-lg">
-                  <SelectValue placeholder="Choose a system to audit" />
+                  <SelectValue placeholder={systemsLoading ? "Loading systems..." : "Choose a system to audit"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {systems.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.name} ({s.url})</SelectItem>
-                  ))}
+                  {systems && systems.length > 0 ? (
+                    systems.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.name} ({s.url})</SelectItem>
+                    ))
+                  ) : (
+                    <div className="p-4 text-sm text-center text-muted-foreground">
+                      No systems found. Add one in the dashboard.
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -169,7 +176,7 @@ export default function NewAssessmentPage() {
               size="lg" 
               className="px-10 h-14 text-lg shadow-xl shadow-primary/30" 
               onClick={handleRunTest}
-              disabled={running}
+              disabled={running || systemsLoading || systems?.length === 0}
             >
               {running ? (
                 <>
