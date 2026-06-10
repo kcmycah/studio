@@ -1,48 +1,62 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PersonaType, AccessibilityIssue, TestRunResult } from "@/lib/types";
 
-export const maxDuration = 60; // 60 seconds max
+export const maxDuration = 60;
 
 /**
- * API route to simulate a DISA accessibility audit findings.
- * It returns raw simulation data which the client will then persist to Firestore.
+ * API route to simulate a DISA accessibility audit findings with axe-core style metadata.
  */
 export async function POST(req: NextRequest) {
   try {
     const { personas } = await req.json();
 
-    // Basic validation
     if (!personas || !Array.isArray(personas)) {
       return NextResponse.json({ error: "Invalid personas provided" }, { status: 400 });
     }
 
-    const testRunResults: TestRunResult[] = (personas as PersonaType[]).map((persona) => {
-      // Simulation logic: generates deterministic-ish but varying results for the MVP
-      const success = Math.random() > 0.4; // 60% chance of passing
+    const results: TestRunResult[] = (personas as PersonaType[]).map((persona) => {
+      const success = Math.random() > 0.2; // 80% page load success
       let accessibilityIssues: AccessibilityIssue[] = [];
 
       if (!success) {
         accessibilityIssues = [
           { 
-            id: "aria-labels", 
+            id: "fatal-error", 
             impact: "critical", 
-            description: `Significant accessibility barrier for ${persona}: Interactive elements lack descriptive labels.` 
-          },
-          { 
-            id: "keyboard-navigation", 
-            impact: "serious", 
-            description: "Some control elements are unreachable via keyboard tab order." 
+            description: "The automated auditor failed to load the interface for this persona.",
+            nodes: []
           }
         ];
-      } else if (Math.random() > 0.7) {
-        // Even successful runs can have minor warnings
-        accessibilityIssues = [
-          { 
-            id: "color-contrast", 
-            impact: "minor", 
-            description: "Background contrast ratios are slightly below recommended levels." 
-          }
-        ];
+      } else {
+        // Deterministic simulation based on persona string
+        const isVisual = ["Blind", "Low vision"].includes(persona);
+        const isCognitive = ["Dyslexic", "Cognitive disability"].includes(persona);
+
+        if (isVisual) {
+          accessibilityIssues.push({
+            id: "image-alt",
+            impact: "critical",
+            description: "Images must have alternate text",
+            nodes: ["<img src='logo.png'>", "<img src='hero_banner.jpg'>"]
+          });
+        }
+
+        if (isCognitive) {
+          accessibilityIssues.push({
+            id: "reading-level",
+            impact: "moderate",
+            description: "Content exceeds recommended reading complexity",
+            nodes: ["<p class='intro-text'>...highly sophisticated algorithms...</p>"]
+          });
+        }
+
+        // Common issues
+        accessibilityIssues.push({
+          id: "color-contrast",
+          impact: "serious",
+          description: "Background and foreground colors do not have enough contrast",
+          nodes: ["<div class='chat-message'>Hello</div>"]
+        });
       }
 
       return {
@@ -52,9 +66,12 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    return NextResponse.json({ results: testRunResults });
+    // Score calculation (Simplified for API response)
+    const passedPersonas = results.filter(r => r.success).length;
+    const score = Math.round((passedPersonas / results.length) * 100);
+
+    return NextResponse.json({ results, score });
   } catch (error: any) {
-    console.error("Audit Simulation API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

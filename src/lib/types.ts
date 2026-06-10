@@ -15,12 +15,11 @@ export interface AccessibilityIssue {
   id: string;
   impact: "critical" | "serious" | "moderate" | "minor";
   description: string;
-  nodes?: any[];
+  nodes?: string[];
 }
 
 /**
  * The raw result returned from the simulation API.
- * Does not yet have document IDs or assessment associations.
  */
 export interface TestRunResult {
   persona: string;

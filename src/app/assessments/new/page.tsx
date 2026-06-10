@@ -21,7 +21,6 @@ import {
 import { ShieldAlert, Play, Loader2, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { computeDISAScore } from "@/lib/scoring";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -65,7 +64,6 @@ export default function NewAssessmentPage() {
 
     setRunning(true);
     try {
-      // 1. Get Simulation Results from API
       const response = await fetch("/api/run-tests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -77,12 +75,9 @@ export default function NewAssessmentPage() {
         throw new Error(errData.error || "Failed to simulate tests");
       }
 
-      const { results }: { results: TestRunResult[] } = await response.json();
+      const { results, score }: { results: TestRunResult[], score: number } = await response.json();
 
-      // 2. Perform Client-Side Mutations
       const assessmentRef = doc(collection(db, "assessments"));
-      const score = computeDISAScore(results as any);
-
       const assessmentData = {
         systemId: selectedSystem,
         userId: user.uid,
@@ -90,7 +85,6 @@ export default function NewAssessmentPage() {
         overallScore: score
       };
 
-      // Create Assessment Record
       setDoc(assessmentRef, assessmentData)
         .catch(async (err) => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
@@ -100,7 +94,6 @@ export default function NewAssessmentPage() {
           }));
         });
 
-      // Create Individual Test Run Records
       results.forEach((res) => {
         const runRef = doc(collection(db, "testRuns"));
         const runData = {
@@ -119,7 +112,6 @@ export default function NewAssessmentPage() {
           });
       });
 
-      // Immediate UI transition
       router.push(`/assessments/${assessmentRef.id}/results`);
     } catch (err: any) {
       toast({
@@ -142,7 +134,7 @@ export default function NewAssessmentPage() {
               <CardTitle className="font-headline text-3xl">Inclusive Fairness Audit</CardTitle>
             </div>
             <CardDescription className="text-lg">
-              Run automated accessibility scans across multiple disability personas to calculate your DISA compliance score.
+              Run automated accessibility scans across multiple disability personas.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-10">
@@ -153,15 +145,9 @@ export default function NewAssessmentPage() {
                   <SelectValue placeholder={systemsLoading ? "Loading systems..." : "Choose a system to audit"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {systems && systems.length > 0 ? (
-                    systems.map(s => (
-                      <SelectItem key={s.id} value={s.id}>{s.name} ({s.url})</SelectItem>
-                    ))
-                  ) : (
-                    <div className="p-4 text-sm text-center text-muted-foreground">
-                      No systems found. Add one in the dashboard.
-                    </div>
-                  )}
+                  {systems?.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.name} ({s.url})</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -212,21 +198,11 @@ export default function NewAssessmentPage() {
             </Button>
             <Button 
               size="lg" 
-              className="px-10 h-14 text-lg shadow-xl shadow-primary/30" 
+              className="px-10 h-14 text-lg" 
               onClick={handleRunTest}
-              disabled={running || systemsLoading || (systems?.length ?? 0) === 0}
+              disabled={running || !selectedSystem || selectedPersonas.length === 0}
             >
-              {running ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-3 animate-spin" />
-                  Running Audits...
-                </>
-              ) : (
-                <>
-                  <Play className="w-5 h-5 mr-3" />
-                  Initiate Audit
-                </>
-              )}
+              {running ? <><Loader2 className="w-5 h-5 mr-3 animate-spin" />Running...</> : <><Play className="w-5 h-5 mr-3" />Initiate Audit</>}
             </Button>
           </CardFooter>
         </Card>
