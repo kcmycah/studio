@@ -1,8 +1,7 @@
-
 /**
- * Legacy Firebase initialization file.
- * This file is now deprecated in favor of using the standard Firebase hooks
- * from "@/firebase".
+ * Legacy Firebase initialization file bridge.
+ * This file is now a bridge to the centralized Firebase initialization
+ * to prevent multiple app instances and resolve "invalid-api-key" errors.
  */
 import { initializeFirebase } from "@/firebase";
 

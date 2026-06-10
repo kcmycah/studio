@@ -1,8 +1,7 @@
-
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/firebase";
 import { signOut } from "firebase/auth";
 import { Button } from "@/components/ui/button";
@@ -14,13 +13,29 @@ import {
   LogOut 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 export const Navbar = () => {
   const pathname = usePathname();
   const auth = useAuth();
+  const router = useRouter();
+  const { toast } = useToast();
 
   const handleLogout = async () => {
-    await signOut(auth);
+    try {
+      await signOut(auth);
+      toast({
+        title: "Signed out",
+        description: "You have been successfully logged out.",
+      });
+      router.push("/login");
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Sign out failed",
+        description: error.message || "An error occurred while signing out.",
+      });
+    }
   };
 
   const navItems = [
