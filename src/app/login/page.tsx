@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useState } from "react";
-import { auth } from "@/lib/firebase";
+import { useAuth } from "@/firebase";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();

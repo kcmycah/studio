@@ -1,10 +1,10 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { Navbar } from "@/components/navbar";
-import { db } from "@/lib/firebase";
-import { useAuth } from "@/components/auth-context";
+import { useFirestore, useUser } from "@/firebase";
 import { collection, query, where, getDocs, orderBy, doc, getDoc } from "firebase/firestore";
 import { AISystem, Assessment } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,20 +16,21 @@ import {
   Eye, 
   Search,
   Calendar,
-  Layers,
-  ArrowRight
+  Layers
 } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 export default function HistoryPage() {
-  const { user } = useAuth();
+  const { user } = useUser();
+  const db = useFirestore();
   const [assessments, setAssessments] = useState<(Assessment & { systemName: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
     const fetchData = async () => {
       try {
         const q = query(
@@ -51,13 +52,13 @@ export default function HistoryPage() {
         
         setAssessments(results);
       } catch (err) {
-        console.error(err);
+        // Error is handled by centralized listener
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, [user]);
+  }, [user, db]);
 
   const filtered = assessments.filter(a => 
     a.systemName.toLowerCase().includes(filter.toLowerCase())

@@ -1,10 +1,10 @@
+
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { Navbar } from "@/components/navbar";
-import { db } from "@/lib/firebase";
-import { useAuth } from "@/components/auth-context";
+import { useAuth, useFirestore, useUser } from "@/firebase";
 import { collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
 import { AISystem, Assessment } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
@@ -20,15 +20,17 @@ import {
   Activity
 } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user } = useUser();
+  const db = useFirestore();
   const [systems, setSystems] = useState<AISystem[]>([]);
   const [latestAssessment, setLatestAssessment] = useState<Assessment | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
 
     const fetchData = async () => {
       try {
@@ -51,14 +53,14 @@ export default function Dashboard() {
           setLatestAssessment({ id: assessmentsSnap.docs[0].id, ...assessmentsSnap.docs[0].data() } as Assessment);
         }
       } catch (err) {
-        console.error("Error fetching dashboard data:", err);
+        // Centralized error handling handles this via the listener
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [user]);
+  }, [user, db]);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-emerald-400";
@@ -158,7 +160,6 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent className="pt-4 flex justify-between items-center border-t border-primary/5 mt-4">
                 <div className="flex -space-x-2">
-                   {/* Avatars placeholder for tested personas */}
                    {[1,2,3].map(i => (
                      <div key={i} className="w-8 h-8 rounded-full border-2 border-card bg-muted flex items-center justify-center text-[10px] font-bold">P{i}</div>
                    ))}

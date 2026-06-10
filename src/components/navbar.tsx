@@ -1,8 +1,9 @@
+
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { auth } from "@/lib/firebase";
+import { useAuth } from "@/firebase";
 import { signOut } from "firebase/auth";
 import { Button } from "@/components/ui/button";
 import { 
@@ -16,6 +17,7 @@ import { cn } from "@/lib/utils";
 
 export const Navbar = () => {
   const pathname = usePathname();
+  const auth = useAuth();
 
   const handleLogout = async () => {
     await signOut(auth);
