@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -26,6 +25,10 @@ export default function LoginPage() {
     try {
       if (isSignUp) {
         await createUserWithEmailAndPassword(auth, email, password);
+        toast({
+          title: "Account Created",
+          description: "Welcome to AuditAccess! Your workspace is ready.",
+        });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -63,7 +66,7 @@ export default function LoginPage() {
                 <Input
                   type="email"
                   placeholder="Email address"
-                  className="pl-10"
+                  className="pl-10 h-11"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -76,16 +79,16 @@ export default function LoginPage() {
                 <Input
                   type="password"
                   placeholder="Password"
-                  className="pl-10"
+                  className="pl-10 h-11"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
               </div>
             </div>
-            <Button className="w-full h-12 text-lg font-medium" disabled={loading}>
+            <Button className="w-full h-12 text-lg font-medium shadow-lg shadow-primary/20" disabled={loading}>
               {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
-              {isSignUp ? "Sign Up" : "Sign In"}
+              {isSignUp ? "Create Account" : "Sign In"}
             </Button>
           </form>
         </CardContent>
