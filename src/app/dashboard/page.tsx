@@ -1,11 +1,10 @@
-
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useUser, useFirestore, useCollection } from "@/firebase";
-import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
+import { collection, query, where, orderBy, limit, getDocs, doc, getDoc } from "firebase/firestore";
 import { AISystem, Assessment, UserProfile } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +14,6 @@ import {
   ArrowRight, 
   ExternalLink, 
   Plus, 
-  AlertCircle,
   Loader2,
   PlusCircle,
   Calendar,
@@ -98,6 +96,7 @@ export default function Dashboard() {
         }
         setSystemStats(results);
       } catch (err: any) {
+        console.error("Dashboard stats error:", err);
         toast({
           variant: "destructive",
           title: "Dashboard Data Error",

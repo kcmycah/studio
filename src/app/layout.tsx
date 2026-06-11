@@ -18,7 +18,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} dark`}>
-      <body className="font-sans antialiased min-h-screen bg-background text-foreground selection:bg-accent/30">
+      <body className="font-sans">
         <FirebaseClientProvider>
           {children}
           <Toaster />

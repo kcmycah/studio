@@ -5,47 +5,51 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 98%;
-    --card-foreground: 240 10% 3.9%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 97.3%;
+    --card-foreground: 0 0% 3.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover-foreground: 0 0% 3.9%;
     --primary: 234 58% 60%;
     --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
     --accent: 234 58% 60%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
     --ring: 234 58% 60%;
     --radius: 0.5rem;
+    --success: 161 72% 39%;
+    --warning: 38 92% 50%;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 6.7%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 92.9%;
+    --card: 0 0% 6.7%;
+    --card-foreground: 0 0% 92.9%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 92.9%;
     --primary: 234 58% 60%;
     --primary-foreground: 0 0% 98%;
-    --secondary: 240 3.7% 15.9%;
+    --secondary: 0 0% 14.9%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
     --accent: 234 58% 60%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
+    --border: 0 0% 15.3%;
+    --input: 0 0% 15.3%;
     --ring: 234 58% 60%;
+    --success: 158 64% 52%;
+    --warning: 37 98% 54%;
   }
 }
 
@@ -54,10 +58,15 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground font-sans antialiased;
   }
 }
 
 .glass-morphism {
-  @apply bg-card/70 backdrop-blur-md border border-border/50;
+  @apply bg-card/70 backdrop-blur-md border border-border;
 }
+
+.text-success { color: hsl(var(--success)); }
+.text-warning { color: hsl(var(--warning)); }
+.bg-success { background-color: hsl(var(--success)); }
+.bg-warning { background-color: hsl(var(--warning)); }
