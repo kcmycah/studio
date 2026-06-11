@@ -1,13 +1,13 @@
 
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useFirestore, useUser } from "@/firebase";
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { AISystem, Assessment, TestRun } from "@/lib/types";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +27,10 @@ import {
   BrainCircuit,
   BarChart4,
   FileText,
-  Mail
+  Mail,
+  Volume2,
+  VolumeX,
+  FileSpreadsheet
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -52,6 +55,13 @@ export default function AssessmentResultsPage() {
   const [explanation, setExplanation] = useState<string | null>(null);
   const [explanationPersona, setExplanationPersona] = useState<string | null>(null);
   const [explainingId, setExplainingId] = useState<string | null>(null);
+
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [loadingAudio, setLoadingAudio] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   useEffect(() => {
     if (!id || !db || !user) return;
@@ -155,6 +165,95 @@ export default function AssessmentResultsPage() {
     }
   };
 
+  const handlePlayTts = async () => {
+    if (isPlaying) {
+      audioRef.current?.pause();
+      setIsPlaying(false);
+      return;
+    }
+
+    if (audioUrl) {
+      audioRef.current?.play();
+      setIsPlaying(true);
+      return;
+    }
+
+    const textToRead = aiSummary || `Assessment for ${system?.name}. Overall DISA Score is ${assessment?.overallScore}. ${kpis.criticalCount} critical issues found.`;
+    
+    setLoadingAudio(true);
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: textToRead })
+      });
+      const data = await res.json();
+      if (data.media) {
+        setAudioUrl(data.media);
+        setIsPlaying(true);
+        // Audio will play via the ref effect or manually
+        setTimeout(() => audioRef.current?.play(), 100);
+      }
+    } catch (err) {
+      toast({ variant: "destructive", title: "Audio Generation Failed" });
+    } finally {
+      setLoadingAudio(false);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!user?.email || !assessment || !system) return;
+    setSendingEmail(true);
+    try {
+      const res = await fetch("/api/send-results", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: user.email,
+          systemName: system.name,
+          score: assessment.overallScore,
+          summary: aiSummary || "Comprehensive DISA accessibility audit finalized.",
+          recommendation: assessment.overallScore >= 80 ? "Maintain current standards." : "Address critical functional blockages.",
+          version: assessment.version
+        })
+      });
+      if (!res.ok) throw new Error("Email service failed.");
+      toast({ title: "Report Sent", description: `Results delivered to ${user.email}` });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Email Error", description: err.message });
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (!rawTestRuns.length) return;
+    const headers = ["Persona", "Success", "Issue ID", "Impact", "Description", "WCAG Level"];
+    const rows = rawTestRuns.flatMap(run => 
+      run.accessibilityIssues.length > 0 
+        ? run.accessibilityIssues.map(issue => [
+            run.persona,
+            run.success ? "Yes" : "No",
+            issue.id,
+            issue.impact,
+            `"${issue.description.replace(/"/g, '""')}"`,
+            issue.wcagLevel
+          ])
+        : [[run.persona, "Yes", "N/A", "N/A", "No issues found", "N/A"]]
+    );
+
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `DISA-Audit-${system?.name}-v${assessment?.version}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Loader2 className="w-8 h-8 animate-spin text-accent" />
@@ -166,6 +265,16 @@ export default function AssessmentResultsPage() {
       <div className="flex min-h-screen bg-background">
         <AppSidebar />
         <main className="flex-1 md:ml-[260px] p-8 max-w-7xl mx-auto w-full">
+          {/* Audio element handled safely - null src is preferred by Next.js/Browser over "" */}
+          {audioUrl && (
+            <audio 
+              ref={audioRef} 
+              src={audioUrl} 
+              onEnded={() => setIsPlaying(false)} 
+              className="hidden"
+            />
+          )}
+
           <div className="mb-10 flex flex-col md:flex-row justify-between items-end gap-6">
             <div>
               <Button variant="ghost" asChild className="mb-4 -ml-4">
@@ -178,8 +287,20 @@ export default function AssessmentResultsPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => window.print()}><Download className="w-4 h-4 mr-2" />Print Report</Button>
-              <Button className="bg-accent text-white hover:bg-accent/90"><Mail className="w-4 h-4 mr-2" />Email Results</Button>
+              <Button variant="outline" onClick={handleExportCSV}>
+                <FileSpreadsheet className="w-4 h-4 mr-2" />CSV Export
+              </Button>
+              <Button variant="outline" onClick={() => window.print()}>
+                <Download className="w-4 h-4 mr-2" />Print
+              </Button>
+              <Button 
+                className="bg-accent text-white hover:bg-accent/90"
+                disabled={sendingEmail}
+                onClick={handleSendEmail}
+              >
+                {sendingEmail ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
+                Email Results
+              </Button>
             </div>
           </div>
 
@@ -230,11 +351,22 @@ export default function AssessmentResultsPage() {
                   <Sparkles className="w-5 h-5 text-accent" /> 
                   AI Executive Summary
                 </CardTitle>
-                {!aiSummary && !generatingSummary && (
-                  <Button size="sm" variant="ghost" className="text-accent" onClick={handleGenerateAiSummary}>
-                    Generate with Gemini
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="h-8 w-8 p-0" 
+                    onClick={handlePlayTts}
+                    disabled={loadingAudio}
+                  >
+                    {loadingAudio ? <Loader2 className="w-4 h-4 animate-spin" /> : isPlaying ? <VolumeX className="w-4 h-4 text-accent" /> : <Volume2 className="w-4 h-4" />}
                   </Button>
-                )}
+                  {!aiSummary && !generatingSummary && (
+                    <Button size="sm" variant="ghost" className="text-accent" onClick={handleGenerateAiSummary}>
+                      Generate with Gemini
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="flex-grow">
                 {generatingSummary ? (
