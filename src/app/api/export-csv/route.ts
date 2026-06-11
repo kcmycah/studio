@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { stringify } from 'csv-stringify/sync';
 import { initializeFirebase } from '@/firebase';
@@ -8,6 +9,7 @@ export const maxDuration = 60;
 
 /**
  * Generates a detailed CSV report for a DISA assessment.
+ * Includes persona conclusions and detailed violation logs.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -47,8 +49,7 @@ export async function POST(req: NextRequest) {
       'Persona Conclusion',
       'Violation ID', 
       'Impact', 
-      'Description', 
-      'HTML Snippet'
+      'Description'
     ]);
 
     const baseData = [
@@ -71,8 +72,7 @@ export async function POST(req: NextRequest) {
             ...personaBaseData,
             issue.id || 'N/A',
             (issue.impact || 'N/A').toUpperCase(),
-            issue.description || 'N/A',
-            (issue.nodes || []).join('; ')
+            issue.description || 'N/A'
           ]);
         }
       } else {
@@ -80,8 +80,7 @@ export async function POST(req: NextRequest) {
           ...personaBaseData,
           'N/A',
           'N/A',
-          'No significant barriers detected.',
-          ''
+          'No significant functional barriers detected.'
         ]);
       }
     }
@@ -91,7 +90,7 @@ export async function POST(req: NextRequest) {
     return new NextResponse(csv, {
       headers: {
         'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename=DISA-Detailed-Report-${systemName}-${assessmentId}.csv`
+        'Content-Disposition': `attachment; filename=DISA-Report-${systemName}.csv`
       }
     });
   } catch (error: any) {

@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { initializeFirebase } from '@/firebase';
@@ -99,20 +100,20 @@ export async function POST(req: NextRequest) {
           </table>
 
           <p style="font-size: 11px; color: #999; text-align: center;">
-            * Automated testing catches 30-40% of accessibility issues. Manual testing with diverse user cohorts is mandatory for full compliance.
+            * Automated testing provides a baseline for accessibility compliance. Manual audits remain mandatory for full functional equity.
           </p>
           
           <div style="text-align: center; margin-top: 40px;">
-            <a href="${process.env.NEXT_PUBLIC_APP_URL}/assessments/${assessmentId}/results" style="background-color: #5e6ad2; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 700; font-size: 14px;">View Full Interactive Report</a>
+            <a href="${process.env.NEXT_PUBLIC_APP_URL}/assessments/${assessmentId}/results" style="background-color: #5e6ad2; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 700; font-size: 14px;">View Full Report</a>
           </div>
         </div>
       </div>
     `;
 
     await resend.emails.send({
-      from: 'DISA Audit Pipeline <onboarding@resend.dev>',
+      from: 'DISA Briefings <onboarding@resend.dev>',
       to: [recipientEmail],
-      subject: `Executive Audit Briefing: ${system.name} (${assessment.overallScore}/100)`,
+      subject: `Briefing: ${system.name} (${assessment.overallScore}/100)`,
       html: htmlContent
     });
 

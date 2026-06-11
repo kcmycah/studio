@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -31,11 +32,11 @@ import { computeKPIs } from "@/lib/filtering";
 import { generateExecutiveSummary } from "@/lib/executiveSummary";
 import { generatePersonaConclusion } from "@/lib/personaConclusion";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 export default function AssessmentResultsPage() {
   const { id } = useParams();
@@ -120,7 +121,7 @@ export default function AssessmentResultsPage() {
       const data = await res.json();
       if (data.media) setAudioUrl(data.media);
     } catch (err) {
-      toast({ variant: "destructive", title: "Audio failed to generate." });
+      toast({ variant: "destructive", title: "Audio generation failed." });
     } finally {
       setTtsLoading(false);
     }
@@ -162,10 +163,10 @@ export default function AssessmentResultsPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `DISA-Detailed-Report-${system?.name || 'report'}-${id}.csv`;
+      link.download = `DISA-Executive-Log-${system?.name || 'report'}.csv`;
       link.click();
       URL.revokeObjectURL(url);
-      toast({ title: "CSV Generated", description: "Your detailed audit log has been downloaded." });
+      toast({ title: "CSV Downloaded", description: "Your detailed audit log has been saved." });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Export Error", description: err.message });
     } finally {
@@ -182,23 +183,23 @@ export default function AssessmentResultsPage() {
         <main className="flex-1 md:ml-[260px] p-8 max-w-6xl mx-auto w-full print:p-0 print:ml-0 overflow-x-hidden">
           <div className="print:hidden mb-10 flex flex-col md:flex-row justify-between items-end gap-6">
             <div>
-              <Button variant="ghost" asChild className="mb-4 -ml-4" aria-label="Back to Workspace">
+              <Button variant="ghost" asChild className="mb-4 -ml-4">
                 <Link href="/dashboard"><ArrowLeft className="w-4 h-4 mr-2" />Back to Workspace</Link>
               </Button>
-              <h1 className="text-4xl font-black tracking-tighter">DISA Executive Briefing</h1>
+              <h1 className="text-4xl font-black tracking-tighter">Executive Briefing</h1>
               <p className="text-muted-foreground mt-1 flex items-center gap-2">
-                <Briefcase className="w-4 h-4" /> Internal Document • Confidential • {assessment?.createdAt?.toDate?.()?.toLocaleDateString()}
+                <Briefcase className="w-4 h-4" /> Professional Memo • Confidential • {assessment?.createdAt?.toDate?.()?.toLocaleDateString()}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={handleExportCSV} disabled={exportingCsv} className="font-bold">
                 {exportingCsv ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileSpreadsheet className="w-4 h-4 mr-2" />}
-                Export Detailed CSV
+                CSV Audit Log
               </Button>
               <Button variant="outline" onClick={() => window.print()} className="font-bold"><Download className="w-4 h-4 mr-2" />Print Briefing</Button>
               <Button className="bg-accent text-white hover:bg-accent/90 font-bold" disabled={sendingEmail} onClick={handleSendEmail}>
                 {sendingEmail ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
-                Email Stakeholders
+                Email Report
               </Button>
             </div>
           </div>
@@ -206,14 +207,14 @@ export default function AssessmentResultsPage() {
           <Card className="shadow-2xl border-2 border-border overflow-hidden print:shadow-none print:border-none bg-white text-black min-h-[1100px] flex flex-col">
             <header className="bg-black text-white p-10 md:p-14 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
               <div className="space-y-3 max-w-full">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">System Assessment Brief</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Compliance Disclosure</p>
                 <h2 className="text-4xl md:text-5xl font-black tracking-tighter break-words">{system?.name} <span className="text-accent">v{assessment?.version}</span></h2>
                 <p className="text-sm font-medium opacity-80 break-all flex items-center gap-2">
                   <ExternalLink className="w-3 h-3" /> {system?.url}
                 </p>
               </div>
               <div className="text-left md:text-right flex flex-col items-start md:items-end shrink-0">
-                <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 opacity-60">Overall DISA Score</div>
+                <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 opacity-60">DISA Inclusive Score</div>
                 <div className="flex items-baseline gap-1">
                   <span className={cn("text-7xl md:text-8xl font-black leading-none", (assessment?.overallScore ?? 0) >= 80 ? "text-emerald-500" : (assessment?.overallScore ?? 0) >= 60 ? "text-amber-500" : "text-accent")}>{assessment?.overallScore}</span>
                   <span className="text-2xl font-bold opacity-40">/100</span>
@@ -226,7 +227,7 @@ export default function AssessmentResultsPage() {
                 <div className="lg:col-span-2 space-y-8">
                   <div className="flex items-center justify-between border-b border-black/10 pb-2">
                     <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">I. Executive Summary</h3>
-                    <Button variant="ghost" size="sm" onClick={handleTts} disabled={ttsLoading} className="h-8 text-[10px] font-black uppercase tracking-widest text-accent hover:bg-accent/10">
+                    <Button variant="ghost" size="sm" onClick={handleTts} disabled={ttsLoading} className="h-8 text-[10px] font-black uppercase tracking-widest text-accent hover:bg-accent/10 print:hidden">
                       {ttsLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <PlayCircle className="w-3 h-3 mr-1" />}
                       Hear Summary
                     </Button>
@@ -257,7 +258,7 @@ export default function AssessmentResultsPage() {
                       {summary?.recommendation}
                     </p>
                     <p className="mt-4 text-[10px] text-black/40 font-bold uppercase tracking-widest">
-                      * Automated testing catches 30-40% of accessibility issues. Manual testing with diverse user cohorts is mandatory for full compliance.
+                      * DISA framework assessment incorporates both technical code markers and functional persona success rates.
                     </p>
                   </div>
                 </div>
@@ -285,20 +286,20 @@ export default function AssessmentResultsPage() {
 
               <section className="grid grid-cols-1 md:grid-cols-2 gap-14 border-b border-black/5 pb-14">
                 <div className="space-y-6">
-                   <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground border-b border-black/10 pb-2">II. Functional Analysis</h3>
+                   <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground border-b border-black/10 pb-2">II. Problem Analysis</h3>
                    <div className="bg-accent/5 p-6 rounded-2xl border border-accent/10">
                      <p className="text-lg leading-relaxed text-black/80 font-medium">
-                       Functional pass rate of <span className="font-black text-accent">{kpis.overallPassRate}%</span> across primary disability personas identifies significant parity gaps in current deployment.
+                       Observed a functional pass rate of <span className="font-black text-accent">{kpis.overallPassRate}%</span>. Personas facing significant barriers include:
                      </p>
                      <div className="flex flex-wrap gap-2 mt-4">
                         {rawTestRuns.filter(r => !r.success).map(r => (
-                          <Badge key={r.id} variant="outline" className="border-accent text-accent font-black text-[10px] py-1 px-3 uppercase">BLOCKAGE: {r.persona}</Badge>
+                          <Badge key={r.id} variant="outline" className="border-accent text-accent font-black text-[10px] py-1 px-3 uppercase">RISK: {r.persona}</Badge>
                         ))}
                      </div>
                    </div>
                 </div>
                 <div className="space-y-6">
-                   <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground border-b border-black/10 pb-2">III. Compliance Metrics</h3>
+                   <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground border-b border-black/10 pb-2">III. Compliance Statistics</h3>
                    <div className="grid grid-cols-3 gap-4">
                       <div className="bg-black/5 p-4 rounded-xl text-center">
                         <p className="text-[9px] font-black text-black/40 uppercase mb-1">WCAG A</p>
@@ -317,7 +318,7 @@ export default function AssessmentResultsPage() {
               </section>
 
               <section className="space-y-10">
-                 <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground border-b border-black/10 pb-2">IV. Persona Success Mapping</h3>
+                 <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground border-b border-black/10 pb-2">IV. Persona Impact Mapping</h3>
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {rawTestRuns.map(run => {
                       const conclusion = generatePersonaConclusion(run);
@@ -327,7 +328,7 @@ export default function AssessmentResultsPage() {
                             <div className="space-y-1">
                                <p className="text-sm font-black uppercase tracking-tight">{run.persona}</p>
                                <Badge variant={run.success ? "secondary" : "outline"} className={cn("text-[9px] font-bold uppercase tracking-widest px-2 py-0.5", run.success ? "bg-emerald-500/10 text-emerald-600 border-none" : "text-red-600 border-red-200")}>
-                                 {run.success ? "Compliant" : "At Risk"}
+                                 {run.success ? "Compliant" : "Barriers Detected"}
                                </Badge>
                             </div>
                             <div className={cn("p-2 rounded-full", run.success ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-600")}>
@@ -338,19 +339,6 @@ export default function AssessmentResultsPage() {
                             <p className="text-xs font-medium text-black/70 leading-relaxed italic">
                               "{conclusion}"
                             </p>
-                            {run.accessibilityIssues.length > 0 && (
-                              <div className="pt-2 border-t border-black/5">
-                                <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-2">Key Barriers:</p>
-                                <ul className="space-y-1">
-                                  {run.accessibilityIssues.slice(0, 2).map((issue, idx) => (
-                                    <li key={idx} className="text-[10px] flex items-center gap-1.5 font-bold">
-                                      <span className={cn("w-1.5 h-1.5 rounded-full", issue.impact === 'critical' ? 'bg-red-500' : 'bg-amber-500')} />
-                                      {issue.description.substring(0, 50)}...
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
                           </div>
                         </Card>
                       );
@@ -358,9 +346,67 @@ export default function AssessmentResultsPage() {
                  </div>
               </section>
 
+              <section className="space-y-8">
+                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground border-b border-black/10 pb-2">V. Framework Pillars & Risk Factors</h3>
+                <Accordion type="single" collapsible className="w-full">
+                  {[
+                    {
+                      id: "accessibility",
+                      title: "1. Accessibility Domain",
+                      importance: "The foundation of digital equity. Without technical accessibility (WCAG), users with disabilities are fundamentally excluded from interacting with the AI.",
+                      advantages: "Clear, deterministic standards and automated remediation paths.",
+                      downfalls: "Automated scans only catch ~40% of real-world barriers; functional usability remains a blind spot."
+                    },
+                    {
+                      id: "bias",
+                      title: "2. Bias Risk Domain",
+                      importance: "Ensures the AI provides equitable service quality regardless of disability status. Prevents 'Digital Ableism' where AI becomes less helpful when disability is disclosed.",
+                      advantages: "Protects brand reputation and ensures functional parity in high-stakes decisions.",
+                      downfalls: "Highly dynamic; requires persistent semantic monitoring to identify subtle algorithmic drift."
+                    },
+                    {
+                      id: "transparency",
+                      title: "3. Transparency Domain",
+                      importance: "Public disclosure of model limitations and data origins build trust and allow for informed consent by vulnerable cohorts.",
+                      advantages: "Drives institutional accountability and simplifies regulatory compliance.",
+                      downfalls: "Often conflicts with proprietary 'black box' business models, leading to disclosure gaps."
+                    },
+                    {
+                      id: "equity",
+                      title: "4. Equity-Data Readiness",
+                      importance: "Evaluates if the underlying training data is representative of diverse disability cohorts and geographic regions.",
+                      advantages: "Mitigates bias at the source rather than just patching outputs.",
+                      downfalls: "Difficult to audit externally; often requires high-level dataset provenance that is rarely public."
+                    }
+                  ].map(pillar => (
+                    <AccordionItem key={pillar.id} value={pillar.id} className="border-black/5">
+                      <AccordionTrigger className="text-sm font-black uppercase py-4 hover:no-underline hover:text-accent">
+                        {pillar.title}
+                      </AccordionTrigger>
+                      <AccordionContent className="space-y-4 pb-6 px-1">
+                        <div>
+                          <p className="text-[10px] font-black uppercase text-muted-foreground mb-1 tracking-widest">Importance</p>
+                          <p className="text-sm font-medium leading-relaxed">{pillar.importance}</p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div>
+                             <p className="text-[10px] font-black uppercase text-emerald-600 mb-1 tracking-widest">Advantages</p>
+                             <p className="text-sm font-medium leading-relaxed">{pillar.advantages}</p>
+                           </div>
+                           <div>
+                             <p className="text-[10px] font-black uppercase text-destructive mb-1 tracking-widest">Downfalls</p>
+                             <p className="text-sm font-medium leading-relaxed">{pillar.downfalls}</p>
+                           </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </section>
+
               <footer className="pt-14 mt-14 border-t border-black/10 text-center">
                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-40">
-                  End of Executive Briefing • DISA Framework v2.4 • Confidential Document
+                  Document Finalized • DISA Framework v2.4 • Confidential Reporting
                 </p>
               </footer>
             </div>
