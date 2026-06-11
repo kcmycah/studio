@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { Navbar } from "@/components/navbar";
 import { useFirestore, useUser } from "@/firebase";
@@ -28,7 +28,11 @@ import {
   Send,
   HelpCircle,
   Download,
-  BrainCircuit
+  BrainCircuit,
+  Volume2,
+  VolumeX,
+  Play,
+  Pause
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -71,10 +75,18 @@ export default function AssessmentResultsPage() {
   const [emailLoading, setEmailLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   
-  // AI Explanation State
+  // AI State
   const [explainingId, setExplainingId] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<string | null>(null);
   const [explanationPersona, setExplanationPersona] = useState<string | null>(null);
+  const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  
+  // Audio State
+  const [ttsLoading, setTtsLoading] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Filtering state
   const [filters, setFilters] = useState<FilterCriteria>({});
@@ -150,6 +162,77 @@ export default function AssessmentResultsPage() {
     }
   };
 
+  const handleGenerateAiSummary = async () => {
+    if (!isPro) {
+      toast({ title: "Pro Feature", description: "Upgrade to Pro for AI-powered deep-dive summaries." });
+      return;
+    }
+
+    setAiSummaryLoading(true);
+    try {
+      const response = await fetch("/api/generate-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          overallScore: assessment?.overallScore,
+          systemName: system?.name,
+          testRunSummaries: rawTestRuns.map(r => ({
+            persona: r.persona,
+            success: r.success,
+            accessibilityIssues: r.accessibilityIssues
+          }))
+        })
+      });
+
+      if (!response.ok) throw new Error("AI Summary failed");
+      const data = await response.json();
+      setAiSummary(data.executiveSummary);
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "AI Error", description: err.message });
+    } finally {
+      setAiSummaryLoading(false);
+    }
+  };
+
+  const handleListenToSummary = async () => {
+    const textToRead = aiSummary || summary?.text;
+    if (!textToRead) return;
+
+    if (audioUrl) {
+      if (isPlaying) {
+        audioRef.current?.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current?.play();
+        setIsPlaying(true);
+      }
+      return;
+    }
+
+    setTtsLoading(true);
+    try {
+      const response = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: textToRead })
+      });
+
+      if (!response.ok) throw new Error("TTS failed");
+      const { media } = await response.json();
+      setAudioUrl(media);
+      setIsPlaying(true);
+      
+      // Auto-play
+      setTimeout(() => {
+        audioRef.current?.play();
+      }, 100);
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Voice Error", description: err.message });
+    } finally {
+      setTtsLoading(false);
+    }
+  };
+
   // Apply filters to test runs
   const filteredRuns = useMemo(() => {
     return filterTestRuns(rawTestRuns, filters);
@@ -205,7 +288,7 @@ export default function AssessmentResultsPage() {
           email: user.email,
           systemName: system.name,
           score: assessment.overallScore,
-          summary: summary.text,
+          summary: aiSummary || summary.text,
           recommendation: summary.recommendation,
           version: assessment.version
         })
@@ -221,7 +304,7 @@ export default function AssessmentResultsPage() {
       toast({
         variant: "destructive",
         title: "Email Failed",
-        description: "We couldn't deliver the report. Please check your Resend configuration.",
+        description: "We couldn't deliver the report.",
       });
     } finally {
       setEmailLoading(false);
@@ -274,6 +357,14 @@ export default function AssessmentResultsPage() {
       <Navbar />
       <TooltipProvider>
         <main className="container mx-auto px-4 py-12 max-w-7xl">
+          <audio 
+            ref={audioRef} 
+            src={audioUrl || ""} 
+            onEnded={() => setIsPlaying(false)}
+            onPause={() => setIsPlaying(false)}
+            onPlay={() => setIsPlaying(true)}
+          />
+
           <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
             <div>
               <div className="flex items-center gap-2 mb-2">
@@ -326,67 +417,55 @@ export default function AssessmentResultsPage() {
             ))}
           </div>
 
-          {/* Filter Bar */}
-          <Card className="glass-morphism border-primary/10 p-4 mb-8">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground">
-                <Filter className="w-4 h-4" /> Filter Findings
-              </div>
-              
-              <Select onValueChange={(v) => setFilters({ ...filters, impact: v === 'all' ? undefined : v as ImpactLevel })}>
-                <SelectTrigger className="w-[140px] h-9">
-                  <SelectValue placeholder="Severity" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Severities</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                  <SelectItem value="serious">Serious</SelectItem>
-                  <SelectItem value="moderate">Moderate</SelectItem>
-                  <SelectItem value="minor">Minor</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                   <div>
-                    <Select 
-                      disabled={!isPro}
-                      onValueChange={(v) => setFilters({ ...filters, wcagLevel: v === 'all' ? undefined : v as WCAGLevel })}
-                    >
-                      <SelectTrigger className="w-[140px] h-9">
-                        <SelectValue placeholder="WCAG Level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Levels</SelectItem>
-                        <SelectItem value="A">Level A</SelectItem>
-                        <SelectItem value="AA">Level AA</SelectItem>
-                        <SelectItem value="AAA">Level AAA</SelectItem>
-                      </SelectContent>
-                    </Select>
-                   </div>
-                </TooltipTrigger>
-                {!isPro && <TooltipContent>Upgrade to Pro for WCAG filtering.</TooltipContent>}
-              </Tooltip>
-
-              <Button variant="ghost" size="sm" onClick={() => setFilters({})}>Clear Filters</Button>
-            </div>
-          </Card>
-
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-            <Card className="lg:col-span-2 glass-morphism border-primary/20 p-6 relative overflow-hidden">
-              <h3 className="font-headline text-xl font-bold flex items-center gap-2 mb-6">
-                <Sparkles className="w-5 h-5 text-primary" />
-                Executive Summary
-              </h3>
-              {summary && (
-                <div className="space-y-4">
-                  <p className="text-lg leading-relaxed">{summary.text}</p>
-                  <div className="bg-primary/5 p-4 rounded-xl border border-primary/10">
+            <Card className="lg:col-span-2 glass-morphism border-primary/20 p-6 relative overflow-hidden flex flex-col">
+              <div className="flex justify-between items-start mb-6">
+                <h3 className="font-headline text-xl font-bold flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  Audit Summary
+                </h3>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 text-xs gap-2" 
+                    onClick={handleListenToSummary}
+                    disabled={ttsLoading}
+                  >
+                    {ttsLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : isPlaying ? <Pause className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                    {isPlaying ? "Pause Summary" : "Listen to Summary"}
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 text-xs gap-2" 
+                    onClick={handleGenerateAiSummary}
+                    disabled={aiSummaryLoading}
+                  >
+                    {aiSummaryLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <BrainCircuit className="w-3 h-3" />}
+                    AI Deep-Dive { !isPro && <Badge className="scale-75 bg-primary/20 text-primary">PRO</Badge> }
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-4 flex-grow">
+                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                  {aiSummary ? (
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <p className="text-lg leading-relaxed whitespace-pre-wrap">{aiSummary}</p>
+                    </div>
+                  ) : summary && (
+                    <p className="text-lg leading-relaxed">{summary.text}</p>
+                  )}
+                </div>
+                
+                {summary && (
+                  <div className="bg-primary/5 p-4 rounded-xl border border-primary/10 mt-auto">
                     <p className="font-bold text-sm text-primary uppercase mb-1">Recommendation</p>
                     <p className="italic text-muted-foreground">{summary.recommendation}</p>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </Card>
 
             <Card className="glass-morphism border-primary/10 p-6">
@@ -406,7 +485,7 @@ export default function AssessmentResultsPage() {
                     </div>
                   </div>
                 ))}
-                {topIssues.length === 0 && <p className="text-muted-foreground italic text-center py-8">No issues match current filters.</p>}
+                {topIssues.length === 0 && <p className="text-muted-foreground italic text-center py-8">No issues found.</p>}
               </div>
             </Card>
           </div>
@@ -431,7 +510,7 @@ export default function AssessmentResultsPage() {
                      )}
                    </div>
                    <div className="space-y-3 flex-grow">
-                     <p className="text-xs text-muted-foreground">Found {run.accessibilityIssues.length} issues for this persona.</p>
+                     <p className="text-xs text-muted-foreground">Found {run.accessibilityIssues.length} issues.</p>
                      {run.accessibilityIssues.slice(0, 3).map((issue, idx) => (
                        <div key={idx} className="bg-muted/30 p-2.5 rounded-lg border border-border/50">
                          <div className="flex items-center justify-between gap-2 mb-1">
@@ -444,7 +523,7 @@ export default function AssessmentResultsPage() {
                              disabled={explainingId === issue.id}
                            >
                              {explainingId === issue.id ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <BrainCircuit className="w-2.5 h-2.5 mr-1" />}
-                             Explain Impact
+                             Explain
                            </Button>
                          </div>
                          <p className="text-[10px] leading-tight text-muted-foreground">{issue.description}</p>
