@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A Genkit flow for generating a concise, non-technical executive summary of an AI system assessment.
@@ -75,7 +76,6 @@ const prompt = ai.definePrompt({
   name: 'executiveSummaryPrompt',
   input: { schema: AssessmentExecutiveSummaryInputSchema },
   output: { schema: AssessmentExecutiveSummaryOutputSchema },
-  // Use explicit model getter to ensure correct endpoint mapping
   model: googleAI.model('gemini-1.5-flash'),
   prompt: `You are an expert accessibility consultant specializing in the DISA (Disability-Inclusive System Assessment) framework. 
 Generate a concise, non-technical executive summary for an AI system accessibility assessment.
