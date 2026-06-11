@@ -4,10 +4,10 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useFirestore, useUser } from "@/firebase";
-import { collection, query, where, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { AISystem, Assessment, TestRun } from "@/lib/types";
 import { useParams } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -15,7 +15,6 @@ import {
   CheckCircle2, 
   XCircle, 
   Loader2,
-  Sparkles,
   ArrowLeft,
   Activity,
   Download,
@@ -30,12 +29,14 @@ import {
   Volume2,
   VolumeX,
   FileSpreadsheet,
-  Info
+  Info,
+  ChevronRight
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { computeKPIs } from "@/lib/filtering";
+import { generateExecutiveSummary } from "@/lib/summary";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { 
   Accordion,
@@ -54,9 +55,6 @@ export default function AssessmentResultsPage() {
   const [system, setSystem] = useState<AISystem | null>(null);
   const [rawTestRuns, setRawTestRuns] = useState<TestRun[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  const [aiSummary, setAiSummary] = useState<string | null>(null);
-  const [generatingSummary, setGeneratingSummary] = useState(false);
   
   const [explanation, setExplanation] = useState<string | null>(null);
   const [explanationPersona, setExplanationPersona] = useState<string | null>(null);
@@ -80,10 +78,6 @@ export default function AssessmentResultsPage() {
         }
         const assessmentData = { id: assessmentSnap.id, ...assessmentSnap.data() } as Assessment;
         setAssessment(assessmentData);
-        
-        if (assessmentData.details?.executiveSummary) {
-          setAiSummary(assessmentData.details.executiveSummary);
-        }
 
         const systemSnap = await getDoc(doc(db, "ai_systems", assessmentData.systemId));
         if (systemSnap.exists()) setSystem({ id: systemSnap.id, ...systemSnap.data() } as AISystem);
@@ -102,6 +96,11 @@ export default function AssessmentResultsPage() {
 
   const kpis = useMemo(() => computeKPIs(rawTestRuns), [rawTestRuns]);
 
+  const summary = useMemo(() => {
+    if (!assessment || rawTestRuns.length === 0) return null;
+    return generateExecutiveSummary(assessment.overallScore, rawTestRuns, assessment.domainScores);
+  }, [assessment, rawTestRuns]);
+
   const domainScores = useMemo(() => {
     if (!assessment) return [];
     const data = assessment.domainScores || {
@@ -117,83 +116,43 @@ export default function AssessmentResultsPage() {
         score: data.accessibility, 
         icon: ShieldCheck, 
         color: "text-accent",
-        description: "Measures compliance with technical WCAG 2.2 standards and functional completion for disabled personas.",
-        importance: "Foundational for any digital tool; without it, users with impairments are fundamentally locked out.",
-        advantages: "Standardized framework (WCAG) allows for clear benchmarking and engineering targets.",
-        downfalls: "Automated scanning only catches ~30-40% of issues; manual usability testing is still required for true equity."
+        description: "Measures technical WCAG standards and functional persona completion.",
+        importance: "Foundational; without it, disabled users are fundamentally locked out.",
+        advantages: "Clear benchmarking targets and standardized engineering requirements.",
+        downfalls: "Automated scans only catch ~30-40% of real-world barriers."
       },
       { 
         name: "Bias Risk", 
         score: data.biasRisk, 
         icon: AlertTriangle, 
         color: "text-amber-500",
-        description: "Evaluates whether the AI responds differently based on the user's mentioned disability.",
-        importance: "Ensures parity of service so that a disabled user receives the same quality of assistance as a baseline user.",
-        advantages: "Identifies disparate impact that technical code audits would never reveal.",
-        downfalls: "Model non-determinism makes it hard to guarantee bias-free responses 100% of the time."
+        description: "Evaluates parity of service for users mentioning disabilities.",
+        importance: "Ensures disabled users receive the same quality of assistance as anyone else.",
+        advantages: "Identifies semantic biases that technical audits cannot see.",
+        downfalls: "Model non-determinism makes 100% bias elimination difficult."
       },
       { 
         name: "Transparency", 
         score: data.transparency, 
         icon: Search, 
         color: "text-emerald-500",
-        description: "Checks for public disclosures, including Model Cards and data provenance documentation.",
-        importance: "Builds public trust and allows external auditors to verify safety claims.",
-        advantages: "Encourages corporate accountability and open-source contribution to safety knowledge.",
-        downfalls: "Documentation can be used as 'open-washing' to hide deeper proprietary flaws or lack of actual safety rigor."
+        description: "Checks for public disclosures and technical documentation.",
+        importance: "Builds trust and allows for external safety verification.",
+        advantages: "Encourages corporate accountability and open safety standards.",
+        downfalls: "Documentation can be used as 'open-washing' for deeper flaws."
       },
       { 
         name: "Equity-Data", 
         score: data.equityData, 
         icon: Database, 
         color: "text-blue-500",
-        description: "Assesses the inclusivity of the underlying training sets (demographics, geography, digital literacy).",
-        importance: "Addresses the 'Garbage In, Garbage Out' problem at the source of the AI's intelligence.",
-        advantages: "Solves long-term fairness by ensuring the model understands diverse human contexts from the start.",
-        downfalls: "Highly difficult to verify without access to private technical reports or training dataset audits."
+        description: "Assesses inclusivity of the underlying training data.",
+        importance: "Addresses the 'Garbage In, Garbage Out' problem at the source.",
+        advantages: "Ensures the model understands diverse human contexts natively.",
+        downfalls: "Verifying private training sets without direct access is difficult."
       },
     ];
   }, [assessment]);
-
-  const handleGenerateAiSummary = async () => {
-    if (!assessment || rawTestRuns.length === 0 || !db) return;
-    setGeneratingSummary(true);
-    try {
-      const res = await fetch("/api/generate-summary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          overallScore: assessment.overallScore,
-          systemName: system?.name || "Unknown System",
-          testRunSummaries: rawTestRuns.map(r => ({
-            persona: r.persona,
-            success: r.success,
-            accessibilityIssues: r.accessibilityIssues.map(i => ({
-              id: i.id,
-              description: i.description,
-              impact: i.impact
-            }))
-          }))
-        })
-      });
-      
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "AI Summary service failed.");
-      
-      setAiSummary(data.executiveSummary);
-      
-      const assessmentRef = doc(db, "assessments", id as string);
-      updateDoc(assessmentRef, {
-        "details.executiveSummary": data.executiveSummary
-      });
-
-      toast({ title: "Summary Generated" });
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "AI Generation Error", description: err.message });
-    } finally {
-      setGeneratingSummary(false);
-    }
-  };
 
   const handleExplainImpact = async (issue: any, persona: string) => {
     setExplainingId(issue.id);
@@ -207,7 +166,7 @@ export default function AssessmentResultsPage() {
       const data = await res.json();
       setExplanation(data.explanation);
     } catch (err) {
-      toast({ variant: "destructive", title: "AI service busy." });
+      toast({ variant: "destructive", title: "Impact service busy." });
     } finally {
       setExplainingId(null);
     }
@@ -217,7 +176,7 @@ export default function AssessmentResultsPage() {
     if (isPlaying) { audioRef.current?.pause(); setIsPlaying(false); return; }
     if (audioUrl) { audioRef.current?.play(); setIsPlaying(true); return; }
 
-    const textToRead = aiSummary || `Assessment for ${system?.name}. Overall DISA Score is ${assessment?.overallScore}.`;
+    const textToRead = summary?.text || `Assessment for ${system?.name}. Overall DISA Score is ${assessment?.overallScore}.`;
     setLoadingAudio(true);
     try {
       const res = await fetch("/api/tts", {
@@ -239,7 +198,7 @@ export default function AssessmentResultsPage() {
   };
 
   const handleSendEmail = async () => {
-    if (!user?.email || !assessment || !system) return;
+    if (!user?.email || !assessment || !system || !summary) return;
     setSendingEmail(true);
     try {
       const res = await fetch("/api/send-results", {
@@ -249,8 +208,8 @@ export default function AssessmentResultsPage() {
           email: user.email,
           systemName: system.name,
           score: assessment.overallScore,
-          summary: aiSummary || "Audit results attached.",
-          recommendation: assessment.overallScore >= 80 ? "Maintain standards." : "Address blockages.",
+          summary: summary.text,
+          recommendation: summary.recommendation,
           version: assessment.version
         })
       });
@@ -376,30 +335,27 @@ export default function AssessmentResultsPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-            <Card className="lg:col-span-2 border-accent/20 shadow-lg flex flex-col">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-accent" /> AI Executive Summary</CardTitle>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={handlePlayTts} disabled={loadingAudio}>
-                    {loadingAudio ? <Loader2 className="w-4 h-4 animate-spin" /> : isPlaying ? <VolumeX className="w-4 h-4 text-accent" /> : <Volume2 className="w-4 h-4" />}
-                  </Button>
-                  <Button size="sm" variant="ghost" className="text-accent" onClick={handleGenerateAiSummary}>
-                    {aiSummary ? "Regenerate" : "Generate Analysis"}
-                  </Button>
-                </div>
+            <Card className="lg:col-span-2 border-accent/20 shadow-lg flex flex-col overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between border-b bg-accent/5 py-4">
+                <CardTitle className="text-lg flex items-center gap-2"><FileText className="w-5 h-5 text-accent" /> Audit Executive Summary</CardTitle>
+                <Button size="sm" variant="ghost" onClick={handlePlayTts} disabled={loadingAudio} className="h-8">
+                  {loadingAudio ? <Loader2 className="w-4 h-4 animate-spin" /> : isPlaying ? <VolumeX className="w-4 h-4 text-accent" /> : <Volume2 className="w-4 h-4" />}
+                  <span className="ml-2 text-xs font-bold uppercase">{isPlaying ? "Stop" : "Listen"}</span>
+                </Button>
               </CardHeader>
-              <CardContent className="flex-grow">
-                {generatingSummary ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground space-y-4">
-                    <Loader2 className="w-10 h-10 animate-spin text-accent" />
-                    <p className="text-sm animate-pulse">Analyzing multi-domain outcomes...</p>
-                  </div>
-                ) : aiSummary ? (
-                  <p className="text-lg leading-relaxed font-medium whitespace-pre-wrap">{aiSummary}</p>
+              <CardContent className="p-8 space-y-6">
+                {summary ? (
+                  <>
+                    <p className="text-lg leading-relaxed font-medium text-foreground/90">{summary.text}</p>
+                    <div className="bg-accent/5 border-l-4 border-accent p-6 rounded-r-xl">
+                      <h4 className="text-xs font-black uppercase text-accent tracking-widest mb-2">Key Recommendation</h4>
+                      <p className="text-base italic text-foreground/80">{summary.recommendation}</p>
+                    </div>
+                  </>
                 ) : (
-                  <div className="py-12 text-center bg-muted/10 rounded-xl border border-dashed flex flex-col items-center justify-center space-y-4">
-                    <BrainCircuit className="w-10 h-10 text-muted-foreground/30" />
-                    <Button onClick={handleGenerateAiSummary} className="bg-accent text-white">Generate with Gemini</Button>
+                  <div className="py-12 flex flex-col items-center justify-center text-muted-foreground space-y-4">
+                    <BarChart4 className="w-10 h-10 opacity-20" />
+                    <p>Compiling assessment data...</p>
                   </div>
                 )}
               </CardContent>
@@ -410,6 +366,14 @@ export default function AssessmentResultsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1"><p className="text-[10px] font-bold text-muted-foreground uppercase">Pass Rate</p><p className="text-2xl font-black text-emerald-500">{kpis.overallPassRate}%</p></div>
                 <div className="space-y-1"><p className="text-[10px] font-bold text-muted-foreground uppercase">Criticals</p><p className="text-2xl font-black text-destructive">{kpis.criticalCount}</p></div>
+                <div className="space-y-1 col-span-2 pt-4 border-t">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase mb-2">WCAG Breakdown</p>
+                  <div className="flex items-center gap-4">
+                    <div className="text-center flex-1"><p className="text-sm font-black">{kpis.totalA}</p><p className="text-[8px] font-bold uppercase text-muted-foreground">Level A</p></div>
+                    <div className="text-center flex-1"><p className="text-sm font-black">{kpis.totalAA}</p><p className="text-[8px] font-bold uppercase text-muted-foreground">Level AA</p></div>
+                    <div className="text-center flex-1"><p className="text-sm font-black">{kpis.totalAAA}</p><p className="text-[8px] font-bold uppercase text-muted-foreground">Level AAA</p></div>
+                  </div>
+                </div>
               </div>
               {assessment?.details?.biasExplanation && (
                 <div className="mt-6 pt-6 border-t"><p className="text-[10px] font-bold text-muted-foreground uppercase mb-2">Bias Risk Insights</p><p className="text-xs text-muted-foreground italic leading-relaxed">{assessment.details.biasExplanation}</p></div>
