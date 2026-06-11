@@ -51,6 +51,7 @@ export interface Assessment {
     biasExplanation?: string;
     totalViolations?: number;
     crawledAt?: Timestamp;
+    executiveSummary?: string;
   };
   createdAt: Timestamp;
 }

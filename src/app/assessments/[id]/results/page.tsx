@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useFirestore, useUser } from "@/firebase";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
 import { AISystem, Assessment, TestRun } from "@/lib/types";
 import { useParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -73,6 +74,11 @@ export default function AssessmentResultsPage() {
         }
         const assessmentData = { id: assessmentSnap.id, ...assessmentSnap.data() } as Assessment;
         setAssessment(assessmentData);
+        
+        // Load persisted summary if it exists
+        if (assessmentData.details?.executiveSummary) {
+          setAiSummary(assessmentData.details.executiveSummary);
+        }
 
         const systemSnap = await getDoc(doc(db, "ai_systems", assessmentData.systemId));
         if (systemSnap.exists()) setSystem({ id: systemSnap.id, ...systemSnap.data() } as AISystem);
@@ -109,7 +115,7 @@ export default function AssessmentResultsPage() {
   }, [assessment]);
 
   const handleGenerateAiSummary = async () => {
-    if (!assessment || rawTestRuns.length === 0) return;
+    if (!assessment || rawTestRuns.length === 0 || !db) return;
     setGeneratingSummary(true);
     try {
       const res = await fetch("/api/generate-summary", {
@@ -134,7 +140,14 @@ export default function AssessmentResultsPage() {
       
       const data = await res.json();
       setAiSummary(data.executiveSummary);
-      toast({ title: "Summary Generated", description: "AI analysis is now available." });
+      
+      // Persist the summary to Firestore
+      const assessmentRef = doc(db, "assessments", id as string);
+      updateDoc(assessmentRef, {
+        "details.executiveSummary": data.executiveSummary
+      });
+
+      toast({ title: "Summary Generated", description: "Analysis is now saved to this report." });
     } catch (err: any) {
       toast({ variant: "destructive", title: "AI Generation Error", description: err.message });
     } finally {
@@ -356,6 +369,11 @@ export default function AssessmentResultsPage() {
                   {!aiSummary && !generatingSummary && (
                     <Button size="sm" variant="ghost" className="text-accent" onClick={handleGenerateAiSummary}>
                       Generate with Gemini
+                    </Button>
+                  )}
+                  {aiSummary && !generatingSummary && (
+                    <Button size="sm" variant="ghost" className="text-xs text-muted-foreground" onClick={handleGenerateAiSummary}>
+                      Regenerate
                     </Button>
                   )}
                 </div>

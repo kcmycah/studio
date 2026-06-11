@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from "next/server";
 import { lemonSqueezySetup, createCheckout } from "@lemonsqueezy/lemonsqueezy.js";
 
@@ -9,11 +10,11 @@ export async function POST(req: NextRequest) {
     const { userId, userEmail, variantId } = await req.json();
 
     const apiKey = process.env.LEMON_SQUEEZY_API_KEY;
-    const storeId = process.env.LEMON_SQUEEZY_STORE_ID;
+    const storeIdStr = process.env.LEMON_SQUEEZY_STORE_ID;
 
     // Critical check for missing Lemon Squeezy configuration
-    if (!apiKey || !storeId) {
-      console.error("Lemon Squeezy Configuration Missing:", { apiKey: !!apiKey, storeId: !!storeId });
+    if (!apiKey || !storeIdStr) {
+      console.error("Lemon Squeezy Configuration Missing:", { apiKey: !!apiKey, storeId: !!storeIdStr });
       return NextResponse.json({ 
         error: "Payments are not configured on the server. Missing LEMON_SQUEEZY_STORE_ID or API KEY." 
       }, { status: 500 });
@@ -23,13 +24,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing user details or plan variant" }, { status: 400 });
     }
 
+    // Convert storeId to number as required by LS SDK
+    const storeId = parseInt(storeIdStr, 10);
+    if (isNaN(storeId)) {
+      return NextResponse.json({ error: "Invalid LEMON_SQUEEZY_STORE_ID. Must be a numeric value." }, { status: 500 });
+    }
+
     lemonSqueezySetup({
       apiKey: apiKey,
       onError: (error) => console.error("Lemon Squeezy Initialization Error:", error),
     });
 
     const checkout = await createCheckout(
-      storeId,
+      storeId.toString(),
       variantId,
       {
         checkoutData: {
