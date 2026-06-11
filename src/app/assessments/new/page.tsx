@@ -1,9 +1,8 @@
-
 "use client";
 
 import { useState, useMemo, Suspense } from "react";
 import { AuthGuard } from "@/components/auth-guard";
-import { Navbar } from "@/components/navbar";
+import { AppSidebar } from "@/components/app-sidebar";
 import { useUser, useFirestore, useCollection } from "@/firebase";
 import { collection, query, where, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { AISystem, PERSONAS, PersonaType, TestRunResult } from "@/lib/types";
@@ -146,109 +145,116 @@ function NewAssessmentContent() {
   };
 
   return (
-    <main className="container mx-auto px-4 py-12 flex justify-center">
-      <Card className="w-full max-w-4xl glass-morphism border-primary/20">
-        <CardHeader>
-          <div className="flex items-center gap-3 mb-2">
-            <ShieldAlert className="w-8 h-8 text-primary" />
-            <CardTitle className="font-headline text-3xl">Initiate Fairness Audit</CardTitle>
-          </div>
-          <CardDescription className="text-lg">
-            Deterministic persona-based scanning for functional AI equity.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-10">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <Label className="text-lg font-semibold">Select AI System</Label>
-              <Select value={selectedSystemId} onValueChange={setSelectedSystemId} disabled={systemsLoading}>
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder={systemsLoading ? "Loading..." : "Target system"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {systems?.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-4">
-              <Label className="text-lg font-semibold flex items-center gap-2">
-                <Layers className="w-4 h-4 text-primary" /> Audit Version
-              </Label>
-              <Input 
-                value={version} 
-                onChange={e => setVersion(e.target.value)} 
-                placeholder="e.g. 1.0.0-alpha"
-                className="h-12"
-              />
-            </div>
-          </div>
+    <div className="flex min-h-screen bg-background">
+      <AppSidebar />
+      <main className="flex-1 md:ml-[260px] p-8 max-w-5xl mx-auto w-full">
+        <header className="mb-10">
+          <h1 className="text-3xl font-bold tracking-tight">New Assessment</h1>
+          <p className="text-muted-foreground mt-1">Configure and launch a deterministic DISA audit.</p>
+        </header>
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label className="text-lg font-semibold flex items-center gap-2">
-                <Users className="w-5 h-5 text-primary" />
-                Target Disability Personas
-              </Label>
-              <Button 
-                variant="link" 
-                size="sm" 
-                onClick={() => setSelectedPersonas([...PERSONAS])}
-                className="text-xs"
-              >
-                Select All Personas
-              </Button>
+        <Card className="glass-morphism border-primary/20">
+          <CardHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <ShieldAlert className="w-8 h-8 text-primary" />
+              <CardTitle className="text-2xl">Initiate Fairness Audit</CardTitle>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {PERSONAS.map(persona => (
-                <div 
-                  key={persona} 
-                  className={cn(
-                    "flex items-center space-x-3 border p-4 rounded-xl transition-all cursor-pointer hover:bg-primary/5",
-                    selectedPersonas.includes(persona) ? "border-primary bg-primary/10 shadow-inner" : "border-border"
-                  )}
-                  onClick={() => togglePersona(persona)}
+            <CardDescription className="text-lg">
+              Deterministic persona-based scanning for functional AI equity.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <Label className="text-lg font-semibold">Select AI System</Label>
+                <Select value={selectedSystemId} onValueChange={setSelectedSystemId} disabled={systemsLoading}>
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder={systemsLoading ? "Loading..." : "Target system"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {systems?.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-4">
+                <Label className="text-lg font-semibold flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-primary" /> Audit Version
+                </Label>
+                <Input 
+                  value={version} 
+                  onChange={e => setVersion(e.target.value)} 
+                  placeholder="e.g. 1.0.0-alpha"
+                  className="h-12"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-lg font-semibold flex items-center gap-2">
+                  <Users className="w-5 h-5 text-primary" />
+                  Target Disability Personas
+                </Label>
+                <Button 
+                  variant="link" 
+                  size="sm" 
+                  onClick={() => setSelectedPersonas([...PERSONAS])}
+                  className="text-xs"
                 >
-                  <Checkbox 
-                    id={persona} 
-                    checked={selectedPersonas.includes(persona)}
-                    onCheckedChange={() => togglePersona(persona)}
-                  />
-                  <label 
-                    htmlFor={persona} 
-                    className="text-sm font-medium cursor-pointer leading-none flex-grow"
+                  Select All Personas
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {PERSONAS.map(persona => (
+                  <div 
+                    key={persona} 
+                    className={cn(
+                      "flex items-center space-x-3 border p-4 rounded-xl transition-all cursor-pointer hover:bg-primary/5",
+                      selectedPersonas.includes(persona) ? "border-primary bg-primary/10 shadow-inner" : "border-border"
+                    )}
+                    onClick={() => togglePersona(persona)}
                   >
-                    {persona}
-                  </label>
-                </div>
-              ))}
+                    <Checkbox 
+                      id={persona} 
+                      checked={selectedPersonas.includes(persona)}
+                      onCheckedChange={() => togglePersona(persona)}
+                    />
+                    <label 
+                      htmlFor={persona} 
+                      className="text-sm font-medium cursor-pointer leading-none flex-grow"
+                    >
+                      {persona}
+                    </label>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-between border-t border-primary/5 pt-8">
-          <Button variant="ghost" onClick={() => router.push("/dashboard")} disabled={running}>
-            Cancel
-          </Button>
-          <Button 
-            size="lg" 
-            className="px-10 h-14 text-lg" 
-            onClick={handleRunTest}
-            disabled={running || !selectedSystemId || selectedPersonas.length === 0 || !version}
-          >
-            {running ? <><Loader2 className="w-5 h-5 mr-3 animate-spin" />Running Scans...</> : <><Play className="w-5 h-5 mr-3" />Start DISA Audit</>}
-          </Button>
-        </CardFooter>
-      </Card>
-    </main>
+          </CardContent>
+          <CardFooter className="flex justify-between border-t border-primary/5 pt-8">
+            <Button variant="ghost" onClick={() => router.push("/dashboard")} disabled={running}>
+              Cancel
+            </Button>
+            <Button 
+              size="lg" 
+              className="px-10 h-14 text-lg bg-accent text-white hover:bg-accent/90" 
+              onClick={handleRunTest}
+              disabled={running || !selectedSystemId || selectedPersonas.length === 0 || !version}
+            >
+              {running ? <><Loader2 className="w-5 h-5 mr-3 animate-spin" />Running Scans...</> : <><Play className="w-5 h-5 mr-3" />Start DISA Audit</>}
+            </Button>
+          </CardFooter>
+        </Card>
+      </main>
+    </div>
   );
 }
 
 export default function NewAssessmentPage() {
   return (
     <AuthGuard>
-      <Navbar />
       <Suspense fallback={<div className="flex justify-center p-24"><Loader2 className="animate-spin text-primary" /></div>}>
         <NewAssessmentContent />
       </Suspense>
