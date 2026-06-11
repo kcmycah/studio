@@ -11,7 +11,8 @@ import {
   LayoutDashboard, 
   PlusSquare, 
   ClipboardList, 
-  LogOut 
+  LogOut,
+  Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -42,7 +43,8 @@ export const Navbar = () => {
   const navItems = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Add System", href: "/systems/new", icon: PlusSquare },
-    { label: "Assessments", href: "/history", icon: ClipboardList },
+    { label: "History", href: "/history", icon: ClipboardList },
+    { label: "How it Works", href: "/how-it-works", icon: Info },
   ];
 
   return (

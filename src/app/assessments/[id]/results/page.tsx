@@ -4,7 +4,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { Navbar } from "@/components/navbar";
-import { useFirestore } from "@/firebase";
+import { useFirestore, useUser } from "@/firebase";
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { AISystem, Assessment, TestRun, ImpactLevel, WCAGLevel } from "@/lib/types";
 import { useParams, useRouter } from "next/navigation";
@@ -25,7 +25,8 @@ import {
   ArrowLeft,
   Filter,
   BarChart3,
-  Mail
+  Mail,
+  Send
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -44,12 +45,14 @@ export default function AssessmentResultsPage() {
   const { id } = useParams();
   const router = useRouter();
   const db = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
   
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [system, setSystem] = useState<AISystem | null>(null);
   const [rawTestRuns, setRawTestRuns] = useState<TestRun[]>([]);
   const [loading, setLoading] = useState(true);
+  const [emailLoading, setEmailLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   
   // Filtering state
@@ -130,17 +133,38 @@ export default function AssessmentResultsPage() {
   }, [assessment, rawTestRuns, topIssues]);
 
   const handleEmailResults = async () => {
-    toast({
-      title: "Processing...",
-      description: "Preparing your audit results for delivery.",
-    });
-    // In a real implementation, this would call /api/send-results
-    setTimeout(() => {
-      toast({
-        title: "Results Sent",
-        description: "An inclusive audit report has been emailed to your registered address.",
+    if (!user?.email || !system || !assessment || !summary) return;
+    
+    setEmailLoading(true);
+    try {
+      const response = await fetch("/api/send-results", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: user.email,
+          systemName: system.name,
+          score: assessment.overallScore,
+          summary: summary.text,
+          recommendation: summary.recommendation,
+          version: assessment.version
+        })
       });
-    }, 1500);
+
+      if (!response.ok) throw new Error("Failed to send email");
+
+      toast({
+        title: "Report Delivered",
+        description: `Audit findings have been sent to ${user.email}.`,
+      });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Email Failed",
+        description: "We couldn't deliver the report. Please check your Resend configuration.",
+      });
+    } finally {
+      setEmailLoading(false);
+    }
   };
 
   if (loading) return (
@@ -164,12 +188,12 @@ export default function AssessmentResultsPage() {
             </div>
             <h1 className="font-headline text-4xl font-bold">{system?.name || "AI System"} v{assessment?.version} Report</h1>
             <p className="text-muted-foreground mt-1">
-              Audit conducted on {mounted ? assessment?.createdAt.toDate().toLocaleString() : ""}
+              Audit conducted on {mounted && assessment ? assessment.createdAt.toDate().toLocaleString() : ""}
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="h-11" onClick={handleEmailResults}>
-              <Mail className="w-4 h-4 mr-2" />
+            <Button variant="outline" className="h-11" onClick={handleEmailResults} disabled={emailLoading}>
+              {emailLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
               Email Results
             </Button>
             <Button className="h-11" asChild>
