@@ -30,7 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { generateExecutiveSummary } from "@/lib/summary";
-import { filterTestRuns, computeKPIs } from "@/lib/filtering";
+import { computeKPIs } from "@/lib/filtering";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
@@ -52,8 +52,6 @@ export default function AssessmentResultsPage() {
   const [explainingId, setExplainingId] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<string | null>(null);
   const [explanationPersona, setExplanationPersona] = useState<string | null>(null);
-  const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
-  const [aiSummary, setAiSummary] = useState<string | null>(null);
   
   // Audio State
   const [ttsLoading, setTtsLoading] = useState(false);
@@ -87,15 +85,19 @@ export default function AssessmentResultsPage() {
         setRawTestRuns(runsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as TestRun)));
       } catch (err) {
         console.error("Error fetching results:", err);
+        toast({
+          variant: "destructive",
+          title: "Data Loading Error",
+          description: "Could not retrieve assessment details. Please try again later."
+        });
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, [id, db, user]);
+  }, [id, db, user, toast]);
 
   const kpis = useMemo(() => computeKPIs(rawTestRuns), [rawTestRuns]);
-  const isPro = userProfile?.subscriptionStatus === 'pro' || userProfile?.subscriptionStatus === 'enterprise';
 
   const topIssues = useMemo(() => {
     const issuesMap = new Map<string, { impact: string; count: number; description: string }>();
@@ -123,12 +125,24 @@ export default function AssessmentResultsPage() {
     try {
       const res = await fetch("/api/explain-impact", {
         method: "POST",
-        body: JSON.stringify({ issueDescription: issue.description, issueImpact: issue.impact, disabilityPersona: persona })
+        body: JSON.stringify({ 
+          issueDescription: issue.description, 
+          issueImpact: issue.impact, 
+          disabilityPersona: persona 
+        })
       });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to generate AI explanation.");
+      }
       const data = await res.json();
       setExplanation(data.explanation);
-    } catch (err) {
-      toast({ variant: "destructive", title: "AI Insight Failed" });
+    } catch (err: any) {
+      toast({ 
+        variant: "destructive", 
+        title: "AI Insight Failed",
+        description: err.message || "Please check your network connection or API settings."
+      });
     } finally {
       setExplainingId(null);
     }
@@ -142,13 +156,22 @@ export default function AssessmentResultsPage() {
     }
     setTtsLoading(true);
     try {
-      const res = await fetch("/api/tts", { method: "POST", body: JSON.stringify({ text: aiSummary || summary?.text }) });
+      const textToSpeak = summary?.text || "No summary available.";
+      const res = await fetch("/api/tts", { 
+        method: "POST", 
+        body: JSON.stringify({ text: textToSpeak }) 
+      });
+      if (!res.ok) throw new Error("Voice synthesis service is currently unavailable.");
       const { media } = await res.json();
       setAudioUrl(media);
       setIsPlaying(true);
       setTimeout(() => audioRef.current?.play(), 100);
-    } catch (err) {
-      toast({ variant: "destructive", title: "Voice Error" });
+    } catch (err: any) {
+      toast({ 
+        variant: "destructive", 
+        title: "Voice Error",
+        description: err.message
+      });
     } finally {
       setTtsLoading(false);
     }
@@ -258,8 +281,13 @@ export default function AssessmentResultsPage() {
                       <div key={idx} className="bg-muted/50 p-2 rounded border text-xs">
                         <div className="flex justify-between mb-1">
                           <span className="font-bold text-accent uppercase text-[9px]">{issue.impact}</span>
-                          <button className="text-[9px] text-accent hover:underline flex items-center gap-1" onClick={() => handleExplainImpact(issue, run.persona)}>
-                            <BrainCircuit className="w-2 h-2" /> Explain
+                          <button 
+                            className="text-[9px] text-accent hover:underline flex items-center gap-1" 
+                            disabled={!!explainingId}
+                            onClick={() => handleExplainImpact(issue, run.persona)}
+                          >
+                            {explainingId === issue.id ? <Loader2 className="w-2 h-2 animate-spin" /> : <BrainCircuit className="w-2 h-2" />} 
+                            Explain
                           </button>
                         </div>
                         <p className="text-muted-foreground leading-tight">{issue.description}</p>
@@ -284,7 +312,7 @@ export default function AssessmentResultsPage() {
                 <DialogTitle className="flex items-center gap-2"><BrainCircuit className="w-5 h-5 text-accent" /> AI Impact Analysis</DialogTitle>
                 <DialogDescription>How this technical failure affects a user who is {explanationPersona}.</DialogDescription>
               </DialogHeader>
-              <div className="py-4 text-sm leading-relaxed">{explanation}</div>
+              <div className="py-4 text-sm leading-relaxed whitespace-pre-wrap">{explanation}</div>
             </DialogContent>
           </Dialog>
         </main>

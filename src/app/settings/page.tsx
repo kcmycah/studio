@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -21,6 +22,8 @@ import {
 import { User, Mail, Bell, Calendar, Loader2, Save, ShieldAlert } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function SettingsPage() {
   const { user } = useUser();
@@ -34,37 +37,48 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!user || !db) return;
     const fetchProfile = async () => {
-      const userRef = doc(db, "users", user.uid);
-      const snap = await getDoc(userRef);
-      if (snap.exists()) {
-        setProfile({ id: snap.id, ...snap.data() } as UserProfile);
+      try {
+        const userRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userRef);
+        if (snap.exists()) {
+          setProfile({ id: snap.id, ...snap.data() } as UserProfile);
+        }
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchProfile();
   }, [user, db]);
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!profile || !db || !user) return;
     setSaving(true);
-    try {
-      const userRef = doc(db, "users", user.uid);
-      await updateDoc(userRef, {
-        settings: profile.settings
+    
+    const userRef = doc(db, "users", user.uid);
+    const updateData = {
+      settings: profile.settings
+    };
+
+    // Following non-blocking mutation pattern
+    updateDoc(userRef, updateData)
+      .then(() => {
+        toast({
+          title: "Settings Saved",
+          description: "Your preferences have been updated."
+        });
+      })
+      .catch(async (err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: userRef.path,
+          operation: 'update',
+          requestResourceData: updateData
+        }));
+      })
+      .finally(() => {
+        setSaving(false);
       });
-      toast({
-        title: "Settings Saved",
-        description: "Your preferences have been updated."
-      });
-    } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "Save Failed",
-        description: err.message
-      });
-    } finally {
-      setSaving(false);
-    }
   };
 
   const isPro = profile?.subscriptionStatus === 'pro' || profile?.subscriptionStatus === 'enterprise';

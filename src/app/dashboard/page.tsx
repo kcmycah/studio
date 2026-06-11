@@ -29,10 +29,12 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { OnboardingModal } from "@/components/onboarding-modal";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
   const { user } = useUser();
   const db = useFirestore();
+  const { toast } = useToast();
 
   const systemsQuery = useMemo(() => {
     if (!db || !user) return null;
@@ -50,9 +52,13 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user || !db) return;
     const fetchProfile = async () => {
-      const snap = await getDocs(query(collection(db, "users"), where("email", "==", user.email)));
-      if (!snap.empty) {
-        setUserProfile({ id: snap.docs[0].id, ...snap.docs[0].data() } as UserProfile);
+      try {
+        const snap = await getDocs(query(collection(db, "users"), where("email", "==", user.email)));
+        if (!snap.empty) {
+          setUserProfile({ id: snap.docs[0].id, ...snap.docs[0].data() } as UserProfile);
+        }
+      } catch (err) {
+        console.error("Dashboard profile fetch error:", err);
       }
     };
     fetchProfile();
@@ -63,34 +69,43 @@ export default function Dashboard() {
 
     const fetchData = async () => {
       setLoadingLatest(true);
-      const results: Record<string, { latest: Assessment, trend: number | null, count: number }> = {};
-      
-      for (const system of systems) {
-        const q = query(
-          collection(db, "assessments"), 
-          where("systemId", "==", system.id),
-          orderBy("createdAt", "desc"),
-          limit(2)
-        );
-        const snap = await getDocs(q);
+      try {
+        const results: Record<string, { latest: Assessment, trend: number | null, count: number }> = {};
         
-        if (!snap.empty) {
-          const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as Assessment));
-          const latest = docs[0];
-          const previous = docs[1];
-          const trend = previous ? latest.overallScore - previous.overallScore : null;
+        for (const system of systems) {
+          const q = query(
+            collection(db, "assessments"), 
+            where("systemId", "==", system.id),
+            orderBy("createdAt", "desc"),
+            limit(2)
+          );
+          const snap = await getDocs(q);
           
-          const countSnap = await getDocs(query(collection(db, "assessments"), where("systemId", "==", system.id)));
+          if (!snap.empty) {
+            const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as Assessment));
+            const latest = docs[0];
+            const previous = docs[1];
+            const trend = previous ? latest.overallScore - previous.overallScore : null;
+            
+            const countSnap = await getDocs(query(collection(db, "assessments"), where("systemId", "==", system.id)));
 
-          results[system.id] = { latest, trend, count: countSnap.size };
+            results[system.id] = { latest, trend, count: countSnap.size };
+          }
         }
+        setSystemStats(results);
+      } catch (err: any) {
+        toast({
+          variant: "destructive",
+          title: "Dashboard Data Error",
+          description: "Failed to load latest assessment trends. Please refresh."
+        });
+      } finally {
+        setLoadingLatest(false);
       }
-      setSystemStats(results);
-      setLoadingLatest(false);
     };
 
     fetchData();
-  }, [systems, db, user]);
+  }, [systems, db, user, toast]);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-emerald-500";
