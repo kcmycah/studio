@@ -18,13 +18,15 @@ import {
   ShieldCheck,
   Plus,
   User,
-  Crown
+  Crown,
+  AlertTriangle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { UserProfile } from "@/lib/types";
+import { ReportIssueDialog } from "./report-issue-dialog";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -34,6 +36,7 @@ export function AppSidebar() {
   const db = useFirestore();
   const { toast } = useToast();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
 
   useEffect(() => {
     if (!user || !db) return;
@@ -98,6 +101,18 @@ export function AppSidebar() {
       </nav>
 
       <div className="p-4 border-t space-y-4">
+        {/* Report Issue Section */}
+        <div className="px-3 py-2">
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start text-[11px] h-8 text-muted-foreground hover:text-accent font-medium gap-2 px-2"
+            onClick={() => setReportOpen(true)}
+          >
+            <AlertTriangle className="w-3 h-3" />
+            Report Accessibility Issue
+          </Button>
+        </div>
+
         <div className="bg-muted/40 rounded-xl p-3 border">
            <div className="flex items-center gap-3 mb-2">
               <div className="h-8 w-8 rounded-full bg-accent/20 flex items-center justify-center">
@@ -132,6 +147,8 @@ export function AppSidebar() {
           Logout
         </Button>
       </div>
+
+      <ReportIssueDialog open={reportOpen} onOpenChange={setReportOpen} />
     </aside>
   );
 }

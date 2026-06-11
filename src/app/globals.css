@@ -64,6 +64,11 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+
+  /* Improved Focus Visibility for WCAG Compliance */
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-background;
+  }
 }
 
 .glass-morphism {

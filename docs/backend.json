@@ -86,6 +86,18 @@
         "dashboardView": { "type": "string", "enum": ["grid", "list"] },
         "updatedAt": { "type": "object", "format": "date-time" }
       }
+    },
+    "Feedback": {
+      "title": "Feedback",
+      "description": "Accessibility feedback or issue report from a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "issue": { "type": "string" },
+        "createdAt": { "type": "object", "format": "date-time" }
+      },
+      "required": ["userId", "issue", "createdAt"]
     }
   },
   "auth": {
@@ -111,6 +123,10 @@
     "/user_preferences/{userId}": {
       "schema": "UserPreference",
       "description": "Persistent UI settings for a user."
+    },
+    "/feedback/{feedbackId}": {
+      "schema": "Feedback",
+      "description": "User reported accessibility issues."
     }
   }
 }
