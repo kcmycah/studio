@@ -168,23 +168,36 @@ export default function AssessmentResultsPage() {
   };
 
   const handleExportCSV = async () => {
-    if (!id) return;
+    if (!assessment || rawTestRuns.length === 0) {
+      toast({ variant: "destructive", title: "Export Error", description: "No data available to export." });
+      return;
+    }
+
     setExportingCsv(true);
     try {
       const res = await fetch("/api/export-csv", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assessmentId: id })
+        body: JSON.stringify({ 
+          systemName: system?.name, 
+          assessment, 
+          testRuns: rawTestRuns 
+        })
       });
-      if (!res.ok) throw new Error("Export failed.");
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Export failed.");
+      }
       
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `DISA-Executive-Log-${system?.name.replace(/\s+/g, '-') || 'Report'}.csv`;
+      link.download = `DISA-Audit-Log-${system?.name.replace(/\s+/g, '-') || 'Report'}.csv`;
       link.click();
       URL.revokeObjectURL(url);
+      
       toast({ title: "CSV Downloaded", description: "Your detailed audit log has been saved." });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Export Error", description: err.message });

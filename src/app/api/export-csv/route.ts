@@ -1,37 +1,23 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { stringify } from 'csv-stringify/sync';
-import { initializeFirebase } from '@/firebase';
-import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { generatePersonaConclusion } from '@/lib/personaConclusion';
-
-export const maxDuration = 60;
 
 /**
  * Generates a detailed CSV report for a DISA assessment.
- * Synchronized with the 'assessments' collection.
+ * Now accepts data directly from the client to bypass server-side Firestore auth barriers.
  */
 export async function POST(req: NextRequest) {
   try {
-    const { assessmentId } = await req.json();
-    if (!assessmentId) return NextResponse.json({ error: 'Assessment ID required' }, { status: 400 });
+    const { systemName, assessment, testRuns } = await req.json();
 
-    const { firestore } = initializeFirebase();
-
-    const assessmentDoc = await getDoc(doc(firestore, 'assessments', assessmentId));
-    if (!assessmentDoc.exists()) {
-      return NextResponse.json({ error: 'Assessment not found' }, { status: 404 });
+    if (!assessment || !testRuns) {
+      return NextResponse.json({ error: 'Missing assessment or test run data.' }, { status: 400 });
     }
-    const assessment = assessmentDoc.data();
-
-    const systemDoc = await getDoc(doc(firestore, 'ai_systems', assessment.systemId));
-    const systemName = systemDoc.exists() ? systemDoc.data().name : 'Unknown System';
-
-    const testRunsQuery = query(collection(firestore, 'testRuns'), where('assessmentId', '==', assessmentId));
-    const testRunsSnap = await getDocs(testRunsQuery);
-    const testRuns = testRunsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
     const rows: any[][] = [];
     
+    // Header Row
     rows.push([
       'Assessment Date', 
       'System Name', 
@@ -48,9 +34,19 @@ export async function POST(req: NextRequest) {
       'Description'
     ]);
 
+    // Format Date safely (handling JSON serialized timestamps)
+    let assessmentDate = 'N/A';
+    if (assessment.createdAt) {
+      if (assessment.createdAt.seconds) {
+        assessmentDate = new Date(assessment.createdAt.seconds * 1000).toISOString();
+      } else if (typeof assessment.createdAt === 'string') {
+        assessmentDate = assessment.createdAt;
+      }
+    }
+
     const baseData = [
-      assessment.createdAt?.toDate?.()?.toISOString() || 'N/A',
-      systemName,
+      assessmentDate,
+      systemName || 'Unknown System',
       assessment.overallScore,
       assessment.domainScores?.accessibility || 0,
       assessment.domainScores?.biasRisk || 0,
@@ -59,7 +55,7 @@ export async function POST(req: NextRequest) {
     ];
 
     for (const run of testRuns) {
-      const conclusion = generatePersonaConclusion(run as any);
+      const conclusion = generatePersonaConclusion(run);
       const personaBaseData = [...baseData, run.persona, run.success ? 'Pass' : 'FAIL', conclusion];
       
       if (run.accessibilityIssues && run.accessibilityIssues.length > 0) {
@@ -86,11 +82,11 @@ export async function POST(req: NextRequest) {
     return new NextResponse(csv, {
       headers: {
         'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename=DISA-Detailed-Log-${systemName.replace(/\s+/g, '-')}.csv`
+        'Content-Disposition': `attachment; filename=DISA-Audit-Log-${(systemName || 'Report').replace(/\s+/g, '-')}.csv`
       }
     });
   } catch (error: any) {
-    console.error('CSV Export Fatal Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('CSV Export Error:', error);
+    return NextResponse.json({ error: error.message || 'Failed to generate CSV export.' }, { status: 500 });
   }
 }
