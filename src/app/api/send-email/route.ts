@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { initializeFirebase } from '@/firebase';
@@ -12,12 +11,13 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
  * Sends a professional executive audit briefing via email.
+ * Synchronized with 'assessments' collection and current scoring model.
  */
 export async function POST(req: NextRequest) {
   try {
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'Resend API key missing. Please add RESEND_API_KEY to your environment.' }, { status: 500 });
+      return NextResponse.json({ error: 'Resend API key missing.' }, { status: 500 });
     }
 
     const { assessmentId, recipientEmail } = await req.json();
@@ -27,7 +27,6 @@ export async function POST(req: NextRequest) {
 
     const { firestore } = initializeFirebase();
 
-    // Fetch Assessment, System, and Test Runs
     const assessmentDoc = await getDoc(doc(firestore, 'assessments', assessmentId));
     if (!assessmentDoc.exists()) {
       return NextResponse.json({ error: 'Assessment not found' }, { status: 404 });
@@ -61,31 +60,29 @@ export async function POST(req: NextRequest) {
       <div style="font-family: sans-serif; max-width: 600px; margin: auto; color: #111; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background-color: #fff;">
         <div style="background-color: #000; color: #fff; padding: 40px;">
           <h1 style="margin: 0; font-size: 24px; font-weight: 900;">Executive Briefing: ${system.name}</h1>
-          <p style="margin: 5px 0 0; opacity: 0.7; font-size: 14px;">Version ${assessment.version} • DISA Framework v2.4</p>
+          <p style="margin: 5px 0 0; opacity: 0.7; font-size: 14px;">DISA Framework v2.4</p>
         </div>
         
         <div style="padding: 40px;">
           <div style="text-align: center; margin-bottom: 40px;">
             <p style="text-transform: uppercase; font-size: 10px; font-weight: 800; color: #666; letter-spacing: 2px;">Inclusive Performance Score</p>
-            <h2 style="font-size: 64px; margin: 0; color: ${assessment.overallScore >= 80 ? '#10b981' : assessment.overallScore >= 60 ? '#f59e0b' : '#ef4444'};">${assessment.overallScore}/100</h2>
+            <h2 style="font-size: 64px; margin: 0; color: #5e6ad2;">${assessment.overallScore}/100</h2>
             <p style="font-weight: 700; color: #666;">Status: ${summary.performanceLevel}</p>
           </div>
 
-          <h3 style="font-size: 12px; font-weight: 900; text-transform: uppercase; border-bottom: 2px solid #eee; padding-bottom: 5px; margin-bottom: 15px;">Executive Summary</h3>
+          <h3 style="font-size: 12px; font-weight: 900; text-transform: uppercase; border-bottom: 2px solid #eee; padding-bottom: 5px; margin-bottom: 15px;">Briefing Summary</h3>
           <p style="line-height: 1.6; margin-bottom: 30px;">${summary.summaryText}</p>
 
           <div style="background-color: #f9fafb; border-left: 4px solid #5e6ad2; padding: 20px; border-radius: 0 4px 4px 0; margin-bottom: 30px;">
-            <p style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #5e6ad2; margin: 0 0 5px 0;">Strategic Recommendation</p>
+            <p style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #5e6ad2; margin: 0 0 5px 0;">Recommendation</p>
             <p style="font-style: italic; font-weight: 700; margin: 0;">${summary.recommendation}</p>
           </div>
 
-          <h3 style="font-size: 12px; font-weight: 900; text-transform: uppercase; border-bottom: 2px solid #eee; padding-bottom: 5px; margin-bottom: 15px;">Persona Success Mapping</h3>
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+          <table style="width: 100%; border-collapse: collapse;">
             <thead>
               <tr style="background-color: #f9fafb; text-align: left;">
-                <th style="padding: 10px; font-size: 11px; text-transform: uppercase;">Persona</th>
-                <th style="padding: 10px; font-size: 11px; text-transform: uppercase;">Status</th>
-                <th style="padding: 10px; font-size: 11px; text-transform: uppercase;">Conclusion</th>
+                <th style="padding: 10px; font-size: 11px;">Persona</th>
+                <th style="padding: 10px; font-size: 11px;">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -93,18 +90,10 @@ export async function POST(req: NextRequest) {
                 <tr style="border-bottom: 1px solid #eee;">
                   <td style="padding: 10px; font-size: 14px; font-weight: 600;">${run.persona}</td>
                   <td style="padding: 10px; font-size: 14px;">${run.success ? '✅ Pass' : '❌ FAIL'}</td>
-                  <td style="padding: 10px; font-size: 12px; color: #666;">${generatePersonaConclusion(run as any)}</td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
-
-          <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee;">
-             <p style="font-size: 11px; color: #999; margin-bottom: 20px;">
-               * Automated testing captures only 30‑40% of accessibility issues. Manual testing with real users is mandatory for full functional equity.
-             </p>
-            <a href="${process.env.NEXT_PUBLIC_APP_URL}/assessments/${assessmentId}/results" style="background-color: #5e6ad2; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 700; font-size: 14px; display: inline-block;">View Full Interactive Report</a>
-          </div>
         </div>
       </div>
     `;

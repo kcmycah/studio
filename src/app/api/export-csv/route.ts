@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { stringify } from 'csv-stringify/sync';
 import { initializeFirebase } from '@/firebase';
@@ -9,7 +8,7 @@ export const maxDuration = 60;
 
 /**
  * Generates a detailed CSV report for a DISA assessment.
- * Includes persona conclusions and detailed violation logs.
+ * Synchronized with the 'assessments' collection.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -18,7 +17,6 @@ export async function POST(req: NextRequest) {
 
     const { firestore } = initializeFirebase();
 
-    // Fetch assessment, system, and test runs
     const assessmentDoc = await getDoc(doc(firestore, 'assessments', assessmentId));
     if (!assessmentDoc.exists()) {
       return NextResponse.json({ error: 'Assessment not found' }, { status: 404 });
@@ -32,10 +30,8 @@ export async function POST(req: NextRequest) {
     const testRunsSnap = await getDocs(testRunsQuery);
     const testRuns = testRunsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    // Build CSV rows
     const rows: any[][] = [];
     
-    // Header row
     rows.push([
       'Assessment Date', 
       'System Name', 
@@ -49,8 +45,7 @@ export async function POST(req: NextRequest) {
       'Persona Conclusion',
       'Violation ID', 
       'Impact', 
-      'Description',
-      'Affected Nodes'
+      'Description'
     ]);
 
     const baseData = [
@@ -73,8 +68,7 @@ export async function POST(req: NextRequest) {
             ...personaBaseData,
             issue.id || 'N/A',
             (issue.impact || 'N/A').toUpperCase(),
-            issue.description || 'N/A',
-            (issue.nodes || []).join('; ')
+            issue.description || 'N/A'
           ]);
         }
       } else {
@@ -82,8 +76,7 @@ export async function POST(req: NextRequest) {
           ...personaBaseData,
           'N/A',
           'N/A',
-          'No significant functional barriers detected.',
-          'N/A'
+          'No significant functional barriers detected.'
         ]);
       }
     }
