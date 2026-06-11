@@ -136,9 +136,12 @@ export default function AssessmentResultsPage() {
         })
       });
       
-      if (!res.ok) throw new Error("AI Summary service failed.");
-      
       const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "AI Summary service failed.");
+      }
+      
       setAiSummary(data.executiveSummary);
       
       // Persist the summary to Firestore
@@ -149,7 +152,11 @@ export default function AssessmentResultsPage() {
 
       toast({ title: "Summary Generated", description: "Analysis is now saved to this report." });
     } catch (err: any) {
-      toast({ variant: "destructive", title: "AI Generation Error", description: err.message });
+      toast({ 
+        variant: "destructive", 
+        title: "AI Generation Error", 
+        description: err.message 
+      });
     } finally {
       setGeneratingSummary(false);
     }
