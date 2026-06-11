@@ -3,7 +3,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { AuthGuard } from "@/components/auth-guard";
-import { Navbar } from "@/components/navbar";
+import { AppSidebar } from "@/components/app-sidebar";
 import { useUser, useFirestore, useCollection } from "@/firebase";
 import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
 import { AISystem, Assessment, UserProfile } from "@/lib/types";
@@ -21,7 +21,6 @@ import {
   Calendar,
   Layers,
   BarChart3,
-  ShieldCheck,
   Zap,
   TrendingUp,
   TrendingDown,
@@ -31,9 +30,6 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { OnboardingModal } from "@/components/onboarding-modal";
 
-/**
- * Enhanced Dashboard with Mini-Cards per AI System and Trend Indicators
- */
 export default function Dashboard() {
   const { user } = useUser();
   const db = useFirestore();
@@ -51,7 +47,6 @@ export default function Dashboard() {
   const [loadingLatest, setLoadingLatest] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
-  // Fetch user profile for subscription status
   useEffect(() => {
     if (!user || !db) return;
     const fetchProfile = async () => {
@@ -63,7 +58,6 @@ export default function Dashboard() {
     fetchProfile();
   }, [user, db]);
 
-  // Fetch latest assessments and trends
   useEffect(() => {
     if (!systems || systems.length === 0 || !db || !user) return;
 
@@ -88,11 +82,7 @@ export default function Dashboard() {
           
           const countSnap = await getDocs(query(collection(db, "assessments"), where("systemId", "==", system.id)));
 
-          results[system.id] = {
-            latest,
-            trend,
-            count: countSnap.size
-          };
+          results[system.id] = { latest, trend, count: countSnap.size };
         }
       }
       setSystemStats(results);
@@ -103,17 +93,9 @@ export default function Dashboard() {
   }, [systems, db, user]);
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return "text-emerald-400";
-    if (score >= 60) return "text-yellow-400";
-    if (score >= 40) return "text-orange-400";
+    if (score >= 80) return "text-emerald-500";
+    if (score >= 60) return "text-amber-500";
     return "text-destructive";
-  };
-
-  const getBgColor = (score: number) => {
-    if (score >= 80) return "bg-emerald-400/10 border-emerald-400/20";
-    if (score >= 60) return "bg-yellow-400/10 border-yellow-400/20";
-    if (score >= 40) return "bg-orange-400/10 border-orange-400/20";
-    return "bg-destructive/10 border-destructive/20";
   };
 
   const isFree = !userProfile || userProfile.subscriptionStatus === 'free';
@@ -121,164 +103,119 @@ export default function Dashboard() {
 
   return (
     <AuthGuard>
-      <Navbar />
-      <OnboardingModal />
-      <main className="container mx-auto px-4 py-12 max-w-7xl">
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <h1 className="font-headline text-4xl font-bold tracking-tight">Workspace</h1>
-              {userProfile?.subscriptionStatus && (
-                <Badge className={cn(
-                  "uppercase text-[10px]",
-                  userProfile.subscriptionStatus === 'pro' ? "bg-primary text-primary-foreground" : "bg-muted"
-                )}>
-                  {userProfile.subscriptionStatus}
-                </Badge>
-              )}
+      <div className="flex min-h-screen bg-background">
+        <AppSidebar />
+        <main className="flex-1 md:ml-[260px] p-8 max-w-7xl mx-auto w-full">
+          <OnboardingModal />
+          
+          <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-foreground">Workspace</h1>
+              <p className="text-muted-foreground mt-1">Monitor inclusive AI compliance across your system inventory.</p>
             </div>
-            <p className="text-muted-foreground text-lg">Monitor inclusive AI compliance across your system inventory.</p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/systems/new">
-              <Button variant="outline" className="h-11 px-6 text-base" disabled={systemLimitReached}>
-                <PlusCircle className="w-5 h-5 mr-2" />
-                Add System
+            <div className="flex gap-3">
+              <Button variant="outline" asChild disabled={systemLimitReached}>
+                <Link href="/systems/new"><PlusCircle className="w-4 h-4 mr-2" />Add System</Link>
               </Button>
-            </Link>
-            <Link href="/assessments/new">
-              <Button className="h-11 px-6 text-base shadow-lg shadow-primary/20">
-                <Plus className="w-5 h-5 mr-2" />
-                New Assessment
+              <Button asChild className="bg-accent text-white hover:bg-accent/90">
+                <Link href="/assessments/new"><Plus className="w-4 h-4 mr-2" />New Assessment</Link>
               </Button>
-            </Link>
-          </div>
-        </header>
-
-        {systemLimitReached && (
-          <Card className="bg-primary/5 border-primary/20 mb-8 p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Zap className="w-5 h-5 text-primary" />
-              <div>
-                <p className="font-bold text-sm">System Limit Reached</p>
-                <p className="text-xs text-muted-foreground">Free accounts are limited to 2 systems. Upgrade to Pro for unlimited auditing.</p>
-              </div>
             </div>
-            <Button size="sm" className="h-8" asChild>
-              <Link href="/billing">Upgrade Now</Link>
-            </Button>
-          </Card>
-        )}
+          </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-          {systems?.map((system) => {
-            const data = systemStats[system.id];
-            const hasAssessment = !!data;
-            
-            return (
-              <Card key={system.id} className="glass-morphism border-primary/10 hover:border-primary/30 transition-all flex flex-col group">
-                <CardHeader className="pb-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <Badge variant="secondary" className="uppercase text-[10px] tracking-widest font-bold">
-                      {system.type}
-                    </Badge>
-                    <Link href={system.url} target="_blank">
-                      <ExternalLink className="w-4 h-4 text-muted-foreground hover:text-primary transition-colors" />
-                    </Link>
-                  </div>
-                  <CardTitle className="font-headline text-2xl">{system.name}</CardTitle>
-                  <CardDescription className="line-clamp-1">{system.url}</CardDescription>
-                </CardHeader>
-                
-                <CardContent className="flex-grow">
-                  {loadingLatest ? (
-                    <div className="flex items-center gap-2 text-muted-foreground py-4">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span className="text-xs">Fetching latest DISA data...</span>
-                    </div>
-                  ) : hasAssessment ? (
-                    <div className="space-y-4">
-                      <div className={cn("rounded-xl p-4 border flex items-center justify-between", getBgColor(data.latest.overallScore))}>
-                        <div>
-                          <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Latest DISA Score</p>
-                          <div className="flex items-center gap-2">
-                            <p className={cn("text-4xl font-headline font-bold", getScoreColor(data.latest.overallScore))}>
-                              {data.latest.overallScore}
-                            </p>
-                            {data.trend !== null && (
-                              <div className={cn("flex items-center text-xs font-bold", data.trend > 0 ? "text-emerald-400" : data.trend < 0 ? "text-destructive" : "text-muted-foreground")}>
-                                {data.trend > 0 ? <TrendingUp className="w-4 h-4 mr-0.5" /> : data.trend < 0 ? <TrendingDown className="w-4 h-4 mr-0.5" /> : <Minus className="w-4 h-4 mr-0.5" />}
-                                {Math.abs(data.trend)}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">v{data.latest.version}</p>
-                          <Badge variant="outline" className="text-[10px] h-5">
-                            {data.latest.overallScore >= 60 ? "STABLE" : "AT RISK"}
-                          </Badge>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-muted/30 p-2 rounded-lg">
-                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-bold uppercase mb-1">
-                            <Calendar className="w-3 h-3" /> Tested
-                          </div>
-                          <p className="text-xs font-medium">{data.latest.createdAt.toDate().toLocaleDateString()}</p>
-                        </div>
-                        <div className="bg-muted/30 p-2 rounded-lg">
-                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-bold uppercase mb-1">
-                            <BarChart3 className="w-3 h-3" /> Audits
-                          </div>
-                          <p className="text-xs font-medium">{data.count} Runs</p>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="py-8 text-center bg-muted/20 rounded-xl border border-dashed border-border">
-                      <AlertCircle className="w-8 h-8 mx-auto text-muted-foreground mb-2 opacity-50" />
-                      <p className="text-xs text-muted-foreground px-4">No assessments found for this system yet.</p>
-                    </div>
-                  )}
-                </CardContent>
-                
-                <CardFooter className="pt-4 border-t border-primary/5 gap-2">
-                  <Button variant="ghost" size="sm" className="w-full text-xs h-9" asChild>
-                    <Link href={`/history?system=${system.id}`}>
-                      <Layers className="w-3 h-3 mr-2" /> History
-                    </Link>
-                  </Button>
-                  <Button size="sm" className="w-full text-xs h-9" asChild>
-                    <Link href={`/assessments/new?system=${system.id}`}>
-                      Run Test <ArrowRight className="w-3 h-3 ml-2" />
-                    </Link>
-                  </Button>
-                </CardFooter>
-              </Card>
-            );
-          })}
-
-          {!systemsLoading && systems?.length === 0 && (
-            <Card className="col-span-full border-dashed border-2 flex flex-col items-center justify-center p-16 text-center bg-transparent">
-              <div className="bg-primary/10 p-6 rounded-full mb-6">
-                <Bot className="w-12 h-12 text-primary" />
+          {systemLimitReached && (
+            <Card className="bg-accent/5 border-accent/20 mb-8 p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Zap className="w-4 h-4 text-accent" />
+                <p className="text-sm">Free account limit reached (2 systems). Upgrade for unlimited auditing.</p>
               </div>
-              <CardTitle className="text-2xl mb-2">Build Your Inventory</CardTitle>
-              <CardDescription className="mb-8 max-w-sm text-lg">
-                Connect your first AI assistant to start measuring its inclusivity performance.
-              </CardDescription>
-              <Link href="/systems/new">
-                <Button size="lg" className="px-8 h-12">
-                  <Plus className="w-5 h-5 mr-2" />
-                  Add Your First System
-                </Button>
-              </Link>
+              <Button size="sm" asChild variant="outline" className="border-accent text-accent hover:bg-accent/10">
+                <Link href="/billing">Upgrade</Link>
+              </Button>
             </Card>
           )}
-        </div>
-      </main>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {systems?.map((system) => {
+              const data = systemStats[system.id];
+              const hasAssessment = !!data;
+              
+              return (
+                <Card key={system.id} className="group hover:border-accent/50 transition-all">
+                  <CardHeader className="pb-4">
+                    <div className="flex justify-between items-start">
+                      <Badge variant="secondary" className="text-[10px] font-bold uppercase">{system.type}</Badge>
+                      <Link href={system.url} target="_blank" className="text-muted-foreground hover:text-accent transition-colors">
+                        <ExternalLink className="w-4 h-4" />
+                      </Link>
+                    </div>
+                    <CardTitle className="text-xl font-bold mt-2">{system.name}</CardTitle>
+                    <CardDescription className="truncate">{system.url}</CardDescription>
+                  </CardHeader>
+                  
+                  <CardContent>
+                    {loadingLatest ? (
+                      <div className="flex items-center gap-2 text-muted-foreground py-4">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span className="text-xs">Fetching data...</span>
+                      </div>
+                    ) : hasAssessment ? (
+                      <div className="space-y-4">
+                        <div className="rounded-lg p-4 bg-muted/30 border border-border/50 flex items-center justify-between">
+                          <div>
+                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">DISA Score</p>
+                            <div className="flex items-center gap-2">
+                              <p className={cn("text-3xl font-bold", getScoreColor(data.latest.overallScore))}>
+                                {data.latest.overallScore}
+                              </p>
+                              {data.trend !== null && (
+                                <div className={cn("flex items-center text-xs font-bold", data.trend > 0 ? "text-emerald-500" : data.trend < 0 ? "text-destructive" : "text-muted-foreground")}>
+                                  {data.trend > 0 ? <TrendingUp className="w-3 h-3 mr-0.5" /> : data.trend < 0 ? <TrendingDown className="w-3 h-3 mr-0.5" /> : <Minus className="w-3 h-3 mr-0.5" />}
+                                  {Math.abs(data.trend)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <Badge variant="outline" className="text-[10px]">v{data.latest.version}</Badge>
+                        </div>
+                        
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {data.latest.createdAt.toDate().toLocaleDateString()}</span>
+                          <span className="flex items-center gap-1"><BarChart3 className="w-3 h-3" /> {data.count} Runs</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="py-8 text-center bg-muted/20 rounded-lg border border-dashed">
+                        <p className="text-xs text-muted-foreground">No assessments yet.</p>
+                      </div>
+                    )}
+                  </CardContent>
+                  
+                  <CardFooter className="pt-4 border-t border-border/50 gap-2">
+                    <Button variant="ghost" size="sm" className="flex-1 text-xs" asChild>
+                      <Link href={`/systems/${system.id}/versions`}><Layers className="w-3 h-3 mr-2" /> History</Link>
+                    </Button>
+                    <Button size="sm" className="flex-1 text-xs bg-accent text-white" asChild>
+                      <Link href={`/assessments/new?system=${system.id}`}>Run Test <ArrowRight className="w-3 h-3 ml-1" /></Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+              );
+            })}
+
+            {!systemsLoading && systems?.length === 0 && (
+              <Card className="col-span-full border-dashed p-16 text-center">
+                <Bot className="w-12 h-12 mx-auto text-muted-foreground mb-4 opacity-30" />
+                <CardTitle className="text-2xl font-bold mb-2">Ready to audit?</CardTitle>
+                <CardDescription className="mb-6">Connect your first AI assistant to start measuring inclusivity.</CardDescription>
+                <Button asChild className="bg-accent text-white">
+                  <Link href="/systems/new"><Plus className="w-4 h-4 mr-2" />Add Your First System</Link>
+                </Button>
+              </Card>
+            )}
+          </div>
+        </main>
+      </div>
     </AuthGuard>
   );
 }
