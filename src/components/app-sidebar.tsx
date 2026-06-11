@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from "next/link";
@@ -47,11 +46,11 @@ export function AppSidebar() {
   ];
 
   return (
-    <aside className="fixed left-0 top-0 hidden h-full w-[260px] flex-col border-r bg-card md:flex">
+    <aside className="fixed left-0 top-0 hidden h-full w-[260px] flex-col border-r bg-card md:flex shadow-sm z-50">
       <div className="flex h-16 items-center px-6 border-b">
         <Link href="/dashboard" className="flex items-center gap-2">
           <ShieldCheck className="w-6 h-6 text-accent" />
-          <span className="font-sans text-lg font-bold tracking-tight">DISA Audit</span>
+          <span className="text-lg font-bold tracking-tight">DISA Audit</span>
         </Link>
       </div>
       
