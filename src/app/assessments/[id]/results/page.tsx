@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
@@ -23,7 +24,8 @@ import {
   Download,
   BrainCircuit,
   Volume2,
-  Pause
+  Pause,
+  Filter
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -32,6 +34,7 @@ import { generateExecutiveSummary } from "@/lib/summary";
 import { computeKPIs } from "@/lib/filtering";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { loadUserPreferences, saveUserPreferences } from "@/lib/preferences";
 
 export default function AssessmentResultsPage() {
   const { id } = useParams();
@@ -47,6 +50,19 @@ export default function AssessmentResultsPage() {
   const [loading, setLoading] = useState(true);
   const [emailLoading, setEmailLoading] = useState(false);
   
+  // Persistent Filters
+  const [filters, setFilters] = useState<{
+    wcagLevels: string[];
+    severities: string[];
+    personas: string[];
+    onlyFailed: boolean;
+  }>({
+    wcagLevels: [],
+    severities: [],
+    personas: [],
+    onlyFailed: false
+  });
+
   // AI State
   const [explainingId, setExplainingId] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<string | null>(null);
@@ -62,12 +78,14 @@ export default function AssessmentResultsPage() {
     if (!id || !db || !user) return;
     const fetchData = async () => {
       try {
-        const [assessmentSnap, profileSnap] = await Promise.all([
+        const [assessmentSnap, profileSnap, prefs] = await Promise.all([
           getDoc(doc(db, "assessments", id as string)),
-          getDoc(doc(db, "users", user.uid))
+          getDoc(doc(db, "users", user.uid)),
+          loadUserPreferences(user.uid)
         ]);
 
         if (profileSnap.exists()) setUserProfile({ id: profileSnap.id, ...profileSnap.data() } as UserProfile);
+        if (prefs?.filters) setFilters(prefs.filters);
 
         if (!assessmentSnap.exists()) {
           setLoading(false);
@@ -96,11 +114,26 @@ export default function AssessmentResultsPage() {
     fetchData();
   }, [id, db, user, toast]);
 
-  const kpis = useMemo(() => computeKPIs(rawTestRuns), [rawTestRuns]);
+  const filteredRuns = useMemo(() => {
+    return rawTestRuns.filter(run => {
+      if (filters.onlyFailed && run.success) return false;
+      if (filters.personas.length > 0 && !filters.personas.includes(run.persona)) return false;
+      return true;
+    }).map(run => ({
+      ...run,
+      accessibilityIssues: run.accessibilityIssues.filter(issue => {
+        if (filters.severities.length > 0 && !filters.severities.includes(issue.impact)) return false;
+        if (filters.wcagLevels.length > 0 && issue.wcagLevel && !filters.wcagLevels.includes(issue.wcagLevel)) return false;
+        return true;
+      })
+    }));
+  }, [rawTestRuns, filters]);
+
+  const kpis = useMemo(() => computeKPIs(filteredRuns), [filteredRuns]);
 
   const topIssues = useMemo(() => {
     const issuesMap = new Map<string, { impact: string; count: number; description: string }>();
-    rawTestRuns.forEach(run => {
+    filteredRuns.forEach(run => {
       run.accessibilityIssues.forEach(issue => {
         const existing = issuesMap.get(issue.id);
         if (existing) existing.count += 1;
@@ -111,12 +144,17 @@ export default function AssessmentResultsPage() {
       .map(([id, data]) => ({ id, ...data }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
-  }, [rawTestRuns]);
+  }, [filteredRuns]);
 
   const summary = useMemo(() => {
-    if (!assessment || rawTestRuns.length === 0) return null;
-    return generateExecutiveSummary(assessment.overallScore, rawTestRuns, topIssues);
-  }, [assessment, rawTestRuns, topIssues]);
+    if (!assessment || filteredRuns.length === 0) return null;
+    return generateExecutiveSummary(assessment.overallScore, filteredRuns, topIssues);
+  }, [assessment, filteredRuns, topIssues]);
+
+  const handleApplyFilter = (newFilters: any) => {
+    setFilters(newFilters);
+    if (user) saveUserPreferences(user.uid, { filters: newFilters });
+  };
 
   const handleEmailReport = async () => {
     if (!user || !assessment || !system || !summary) return;
@@ -225,6 +263,14 @@ export default function AssessmentResultsPage() {
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
+                onClick={() => handleApplyFilter({...filters, onlyFailed: !filters.onlyFailed})}
+                className={cn(filters.onlyFailed && "bg-destructive/10 text-destructive border-destructive")}
+              >
+                <Filter className="w-4 h-4 mr-2" />
+                {filters.onlyFailed ? "Showing Failed" : "Show All"}
+              </Button>
+              <Button 
+                variant="outline" 
                 onClick={handleEmailReport} 
                 disabled={emailLoading} 
                 className="border-accent text-accent"
@@ -293,6 +339,7 @@ export default function AssessmentResultsPage() {
                     <span className="text-xl font-bold text-accent">{issue.count}</span>
                   </div>
                 ))}
+                {topIssues.length === 0 && <p className="text-sm text-muted-foreground italic">No issues filtered.</p>}
               </CardContent>
             </Card>
           </div>
@@ -300,7 +347,7 @@ export default function AssessmentResultsPage() {
           <section className="mb-12">
             <h2 className="text-2xl font-bold mb-6">Persona Details</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {rawTestRuns.map(run => (
+              {filteredRuns.map(run => (
                 <Card key={run.id} className={cn("flex flex-col", !run.success && "border-destructive/30")}>
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardTitle className="text-md">{run.persona}</CardTitle>
@@ -323,10 +370,11 @@ export default function AssessmentResultsPage() {
                         <p className="text-muted-foreground leading-tight">{issue.description}</p>
                       </div>
                     ))}
-                    {run.accessibilityIssues.length === 0 && <p className="text-xs text-muted-foreground italic">No issues detected.</p>}
+                    {run.accessibilityIssues.length === 0 && <p className="text-xs text-muted-foreground italic">No issues detected for this view.</p>}
                   </CardContent>
                 </Card>
               ))}
+              {filteredRuns.length === 0 && <p className="col-span-full text-center py-12 text-muted-foreground italic">No personas match your filters.</p>}
             </div>
           </section>
 

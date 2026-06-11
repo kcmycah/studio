@@ -23,17 +23,22 @@ import {
   Zap,
   TrendingUp,
   TrendingDown,
-  Minus
+  Minus,
+  LayoutGrid,
+  List
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { OnboardingModal } from "@/components/onboarding-modal";
 import { useToast } from "@/hooks/use-toast";
+import { loadUserPreferences, saveUserPreferences } from "@/lib/preferences";
 
 export default function Dashboard() {
   const { user } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
+
+  const [dashboardView, setDashboardView] = useState<"grid" | "list">("grid");
 
   const systemsQuery = useMemo(() => {
     if (!db || !user) return null;
@@ -57,6 +62,12 @@ export default function Dashboard() {
         if (snap.exists()) {
           setUserProfile({ id: snap.id, ...snap.data() } as UserProfile);
         }
+
+        // Load preferences
+        const prefs = await loadUserPreferences(user.uid);
+        if (prefs?.dashboardView) {
+          setDashboardView(prefs.dashboardView);
+        }
       } catch (err) {
         console.error("Dashboard profile fetch error:", err);
       }
@@ -75,7 +86,6 @@ export default function Dashboard() {
       try {
         const results: Record<string, { latest: Assessment, trend: number | null, count: number }> = {};
         
-        // Fetch all assessments for user
         const allAssessmentsQuery = query(
           collection(db, "assessments"),
           where("userId", "==", user.uid)
@@ -108,6 +118,14 @@ export default function Dashboard() {
     fetchData();
   }, [systems, db, user]);
 
+  const toggleView = () => {
+    const nextView = dashboardView === "grid" ? "list" : "grid";
+    setDashboardView(nextView);
+    if (user) {
+      saveUserPreferences(user.uid, { dashboardView: nextView });
+    }
+  };
+
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-emerald-500";
     if (score >= 60) return "text-amber-500";
@@ -129,7 +147,10 @@ export default function Dashboard() {
               <h1 className="text-3xl font-bold tracking-tight">Workspace</h1>
               <p className="text-muted-foreground mt-1">Audit and monitor your AI accessibility health.</p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" onClick={toggleView} title={`Switch to ${dashboardView === "grid" ? "list" : "grid"} view`}>
+                {dashboardView === "grid" ? <List className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
+              </Button>
               <Button variant="outline" asChild disabled={systemLimitReached}>
                 <Link href="/systems/new">
                   <PlusCircle className="w-4 h-4 mr-2" />
@@ -162,7 +183,11 @@ export default function Dashboard() {
             </Card>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className={cn(
+            dashboardView === "grid" 
+              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
+              : "flex flex-col gap-4"
+          )}>
             {systemsLoading ? (
                Array.from({ length: 3 }).map((_, i) => (
                  <Card key={i} className="h-[320px] animate-pulse bg-muted/50 border-border" />
@@ -172,6 +197,50 @@ export default function Dashboard() {
                 const data = systemStats[system.id];
                 const hasAssessment = !!data;
                 
+                if (dashboardView === "list") {
+                  return (
+                    <Card key={system.id} className="flex items-center justify-between p-4 group hover:border-accent/50 transition-all shadow-sm">
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className="bg-muted p-2 rounded-lg">
+                          <Bot className="w-6 h-6 text-accent" />
+                        </div>
+                        <div>
+                          <p className="font-bold">{system.name}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase">{system.type} • {system.url}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-8 px-8">
+                        {hasAssessment ? (
+                          <>
+                            <div className="text-center">
+                              <p className="text-[9px] uppercase font-bold text-muted-foreground">Score</p>
+                              <p className={cn("text-xl font-black", getScoreColor(data.latest.overallScore))}>
+                                {data.latest.overallScore}
+                              </p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-[9px] uppercase font-bold text-muted-foreground">Version</p>
+                              <p className="text-sm font-bold">v{data.latest.version}</p>
+                            </div>
+                          </>
+                        ) : (
+                          <p className="text-xs text-muted-foreground italic">No audits</p>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/systems/${system.id}/versions`}>History</Link>
+                        </Button>
+                        <Button size="sm" className="bg-accent text-white" asChild>
+                          <Link href={`/assessments/new?system=${system.id}`}>Run Audit</Link>
+                        </Button>
+                      </div>
+                    </Card>
+                  );
+                }
+
                 return (
                   <Card key={system.id} className="group hover:border-accent/50 transition-all shadow-sm flex flex-col">
                     <CardHeader className="pb-4">

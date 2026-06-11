@@ -67,6 +67,25 @@
           }
         }
       }
+    },
+    "UserPreference": {
+      "title": "User Preference",
+      "description": "Persistent UI settings and filters for a user.",
+      "type": "object",
+      "properties": {
+        "filters": {
+          "type": "object",
+          "properties": {
+            "wcagLevels": { "type": "array", "items": { "type": "string" } },
+            "severities": { "type": "array", "items": { "type": "string" } },
+            "personas": { "type": "array", "items": { "type": "string" } },
+            "onlyFailed": { "type": "boolean" },
+            "onlyPassed": { "type": "boolean" }
+          }
+        },
+        "dashboardView": { "type": "string", "enum": ["grid", "list"] },
+        "updatedAt": { "type": "object", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -88,6 +107,10 @@
     "/testRuns/{runId}": {
       "schema": "TestRun",
       "description": "Individual persona test results for an assessment."
+    },
+    "/user_preferences/{userId}": {
+      "schema": "UserPreference",
+      "description": "Persistent UI settings for a user."
     }
   }
 }
