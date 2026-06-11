@@ -19,9 +19,9 @@ export async function POST(req: NextRequest) {
     
     // Provide a more descriptive error message for 403 Forbidden
     if (errorMessage.includes("403")) {
-      errorMessage = "AI Access Forbidden (403). Please ensure the Generative Language API is enabled in your Google Cloud Console for this API key.";
+      errorMessage = "AI Access Forbidden (403). Possible reasons:\n1. Propagation: It can take 5+ mins for the 'Generative Language API' enablement to sync.\n2. API Restrictions: Check 'APIs & Services > Credentials' in Google Cloud. Ensure your key is NOT restricted, or specifically allow the 'Generative Language API'.\n3. Billing: Ensure your Cloud project has a billing account attached (required for some Gemini usage).";
     } else if (errorMessage.includes("404")) {
-      errorMessage = "AI Model Not Found (404). Please ensure you are using a supported model identifier.";
+      errorMessage = "AI Model Not Found (404). Please ensure you are using a supported model identifier like 'googleai/gemini-1.5-flash'.";
     }
 
     return NextResponse.json(
