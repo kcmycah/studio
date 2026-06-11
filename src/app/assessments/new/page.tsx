@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, Suspense } from "react";
@@ -89,7 +90,6 @@ function NewAssessmentContent() {
 
       const { results, domainScores, biasExplanation } = await response.json();
       
-      // Compute the weighted DISA score across all 4 domains
       const finalScores = computeFullDISAScore({
         accessibilityScore: domainScores.accessibility,
         biasRiskScore: domainScores.biasRisk,
@@ -124,12 +124,12 @@ function NewAssessmentContent() {
           }));
         });
 
-      // Optimistically write test runs
       results.forEach((res: TestRunResult) => {
         const runRef = doc(collection(db, "testRuns"));
         const runData = {
           ...res,
           assessmentId: assessmentRef.id,
+          userId: user.uid, // Unified security field
           createdAt: serverTimestamp()
         };
         

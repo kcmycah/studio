@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -41,13 +42,15 @@ export default function VersionHistoryPage() {
   }, [systemId, db]);
 
   const assessmentsQuery = useMemo(() => {
-    if (!db || !systemId) return null;
+    if (!db || !systemId || !user) return null;
+    // Security rules require userId filter for list operations
     return query(
       collection(db, "assessments"),
       where("systemId", "==", systemId),
+      where("userId", "==", user.uid),
       orderBy("createdAt", "desc")
     );
-  }, [db, systemId]);
+  }, [db, systemId, user]);
 
   const { data: assessments, loading } = useCollection<Assessment>(assessmentsQuery);
 

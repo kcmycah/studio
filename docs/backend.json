@@ -49,6 +49,7 @@
       "type": "object",
       "properties": {
         "assessmentId": { "type": "string" },
+        "userId": { "type": "string" },
         "persona": { "type": "string" },
         "success": { "type": "boolean" },
         "accessibilityIssues": {
@@ -65,7 +66,7 @@
         },
         "createdAt": { "type": "object", "format": "date-time" }
       },
-      "required": ["assessmentId", "persona", "success"]
+      "required": ["assessmentId", "userId", "persona", "success"]
     },
     "User": {
       "title": "User Profile",

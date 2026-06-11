@@ -68,7 +68,11 @@ export default function AssessmentResultsPage() {
         const systemSnap = await getDoc(doc(db, "ai_systems", assessmentData.systemId));
         if (systemSnap.exists()) setSystem({ id: systemSnap.id, ...systemSnap.data() } as AISystem);
 
-        const q = query(collection(db, "testRuns"), where("assessmentId", "==", id));
+        const q = query(
+          collection(db, "testRuns"), 
+          where("assessmentId", "==", id),
+          where("userId", "==", user.uid)
+        );
         const runsSnap = await getDocs(q);
         const runs = runsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as TestRun));
         setRawTestRuns(runs.sort((a, b) => a.persona.localeCompare(b.persona)));
