@@ -38,6 +38,8 @@ import { OnboardingModal } from "@/components/onboarding-modal";
 import { useToast } from "@/hooks/use-toast";
 import { loadUserPreferences, saveUserPreferences } from "@/lib/preferences";
 import { getUserUsage, UserUsage } from "@/lib/usage";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -96,13 +98,13 @@ export default function Dashboard() {
         const usageData = await getUserUsage(db, user.uid);
         setUsage(usageData);
       } catch (err) {
-        console.error("Dashboard metadata fetch error:", err);
+        // Metadata fetch error handling
       } finally {
         setLoadingUsage(false);
       }
     };
     fetchData();
-  }, [user, db, systems]); // Refresh usage when systems change
+  }, [user, db, systems]);
 
   useEffect(() => {
     if (!systems || !db || !user) {
@@ -112,14 +114,13 @@ export default function Dashboard() {
 
     const fetchData = async () => {
       setLoadingLatest(true);
-      try {
+      const allAssessmentsQuery = query(
+        collection(db, "assessments"),
+        where("userId", "==", user.uid)
+      );
+
+      getDocs(allAssessmentsQuery).then((allSnap) => {
         const results: Record<string, { latest: Assessment, trend: number | null, count: number }> = {};
-        
-        const allAssessmentsQuery = query(
-          collection(db, "assessments"),
-          where("userId", "==", user.uid)
-        );
-        const allSnap = await getDocs(allAssessmentsQuery);
         const allAssessments = allSnap.docs.map(d => ({ id: d.id, ...d.data() } as Assessment));
 
         systems.forEach(system => {
@@ -137,11 +138,14 @@ export default function Dashboard() {
         });
 
         setSystemStats(results);
-      } catch (err: any) {
-        console.error("Dashboard stats error:", err);
-      } finally {
+      }).catch(async (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'assessments',
+          operation: 'list'
+        }));
+      }).finally(() => {
         setLoadingLatest(false);
-      }
+      });
     };
 
     fetchData();
@@ -206,7 +210,6 @@ export default function Dashboard() {
             </div>
           </header>
 
-          {/* Usage Monitoring Section */}
           {!loadingUsage && usage && (
             <Card className="bg-card/30 border-border/50 mb-10 overflow-hidden">
               <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-8 items-center">

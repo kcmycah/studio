@@ -25,6 +25,8 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function VersionHistoryPage() {
   const { systemId } = useParams();
@@ -36,14 +38,21 @@ export default function VersionHistoryPage() {
 
   useEffect(() => {
     if (!systemId || !db) return;
-    getDoc(doc(db, "ai_systems", systemId as string)).then(snap => {
-      if (snap.exists()) setSystem({ id: snap.id, ...snap.data() } as AISystem);
+    const sysRef = doc(db, "ai_systems", systemId as string);
+    getDoc(sysRef).then(snap => {
+      if (snap.exists()) {
+        setSystem({ id: snap.id, ...snap.data() } as AISystem);
+      }
+    }).catch(async (error) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: sysRef.path,
+        operation: 'get'
+      }));
     });
   }, [systemId, db]);
 
   const assessmentsQuery = useMemo(() => {
     if (!db || !systemId || !user) return null;
-    // Security rules require userId filter for list operations
     return query(
       collection(db, "assessments"),
       where("systemId", "==", systemId),
@@ -68,7 +77,7 @@ export default function VersionHistoryPage() {
 
   return (
     <AuthGuard>
-      <div className="flex min-h-screen bg-background">
+      <div className="flex min-h-screen bg-background text-foreground">
         <AppSidebar />
         <main className="flex-1 md:ml-[260px] p-8 pt-24 md:pt-8 max-w-5xl mx-auto w-full">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">

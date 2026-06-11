@@ -35,6 +35,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 function HistoryContent() {
   const { user } = useUser();
@@ -51,17 +53,24 @@ function HistoryContent() {
   const fetchData = async () => {
     if (!user || !db) return;
     setLoading(true);
-    try {
-      const q = query(
-        collection(db, "assessments"), 
-        where("userId", "==", user.uid)
-      );
-      const snap = await getDocs(q);
-      
-      const systemsSnap = await getDocs(query(collection(db, "ai_systems"), where("userId", "==", user.uid)));
+    
+    const assessmentsQuery = query(
+      collection(db, "assessments"), 
+      where("userId", "==", user.uid)
+    );
+
+    const systemsQuery = query(
+      collection(db, "ai_systems"), 
+      where("userId", "==", user.uid)
+    );
+
+    Promise.all([
+      getDocs(assessmentsQuery),
+      getDocs(systemsQuery)
+    ]).then(([assessmentsSnap, systemsSnap]) => {
       const systemsMap = new Map(systemsSnap.docs.map(d => [d.id, (d.data() as AISystem).name]));
 
-      const results = snap.docs
+      const results = assessmentsSnap.docs
         .map(d => {
           const data = d.data() as Assessment;
           return {
@@ -70,7 +79,7 @@ function HistoryContent() {
             systemName: systemsMap.get(data.systemId) || "Unknown System"
           };
         })
-        .filter(item => !!item.createdAt) // Ensure createdAt exists to prevent sort errors
+        .filter(item => !!item.createdAt)
         .sort((a, b) => {
           const timeA = a.createdAt?.toMillis?.() || 0;
           const timeB = b.createdAt?.toMillis?.() || 0;
@@ -82,12 +91,15 @@ function HistoryContent() {
         : results;
       
       setAssessments(filteredResults);
-    } catch (err) {
-      console.error("Error fetching history:", err);
-      toast({ variant: "destructive", title: "Failed to load history" });
-    } finally {
+    }).catch(async (error) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: 'assessments',
+        operation: 'list'
+      }));
+      toast({ variant: "destructive", title: "Access Denied", description: "Could not retrieve history logs." });
+    }).finally(() => {
       setLoading(false);
-    }
+    });
   };
 
   useEffect(() => {
@@ -112,7 +124,7 @@ function HistoryContent() {
   );
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background text-foreground">
       <AppSidebar />
       <main className="flex-1 md:ml-[260px] p-8 pt-24 md:pt-8 max-w-7xl mx-auto w-full">
         <header className="mb-10">

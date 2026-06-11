@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -30,6 +31,8 @@ import Link from "next/link";
 import { computeKPIs } from "@/lib/filtering";
 import { generateExecutiveSummary } from "@/lib/executiveSummary";
 import { generatePersonaConclusion } from "@/lib/personaConclusion";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 import {
   Accordion,
   AccordionContent,
@@ -54,8 +57,9 @@ export default function AssessmentResultsPage() {
   useEffect(() => {
     if (!id || !db || !user) return;
     const fetchData = async () => {
-      try {
-        const assessmentSnap = await getDoc(doc(db, "assessments", id as string));
+      const assessmentRef = doc(db, "assessments", id as string);
+      
+      getDoc(assessmentRef).then(async (assessmentSnap) => {
         if (!assessmentSnap.exists()) {
           setLoading(false);
           return;
@@ -63,23 +67,37 @@ export default function AssessmentResultsPage() {
         const assessmentData = { id: assessmentSnap.id, ...assessmentSnap.data() } as Assessment;
         setAssessment(assessmentData);
 
-        const systemSnap = await getDoc(doc(db, "ai_systems", assessmentData.systemId));
-        if (systemSnap.exists()) setSystem({ id: systemSnap.id, ...systemSnap.data() } as AISystem);
+        // Fetch system details
+        const systemRef = doc(db, "ai_systems", assessmentData.systemId);
+        getDoc(systemRef).then(systemSnap => {
+          if (systemSnap.exists()) setSystem({ id: systemSnap.id, ...systemSnap.data() } as AISystem);
+        });
 
-        // Security requirement: Filter queries by userId
+        // Fetch test runs
         const q = query(
           collection(db, "testRuns"), 
           where("assessmentId", "==", id as string),
           where("userId", "==", user.uid)
         );
-        const runsSnap = await getDocs(q);
-        const runs = runsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as TestRun));
-        setRawTestRuns(runs.sort((a, b) => a.persona.localeCompare(b.persona)));
-      } catch (err) {
-        console.error("Error fetching results:", err);
-      } finally {
+        getDocs(q).then(runsSnap => {
+          const runs = runsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as TestRun));
+          setRawTestRuns(runs.sort((a, b) => a.persona.localeCompare(b.persona)));
+        }).catch(async (error) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'testRuns',
+            operation: 'list'
+          }));
+        });
+
+      }).catch(async (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: assessmentRef.path,
+          operation: 'get'
+        }));
+        toast({ variant: "destructive", title: "Access Denied", description: "You do not have permission to view this report." });
+      }).finally(() => {
         setLoading(false);
-      }
+      });
     };
     fetchData();
   }, [id, db, user]);

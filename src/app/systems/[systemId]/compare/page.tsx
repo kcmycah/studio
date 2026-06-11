@@ -26,11 +26,14 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 function CompareContent() {
   const { systemId } = useParams();
   const searchParams = useSearchParams();
   const db = useFirestore();
+  const { user } = useUser();
   const v1Id = searchParams.get("v1");
   const v2Id = searchParams.get("v2");
   
@@ -44,21 +47,43 @@ function CompareContent() {
   } | null>(null);
 
   useEffect(() => {
-    if (!db || !v1Id || !v2Id) return;
+    if (!db || !user || !v1Id || !v2Id) return;
 
     const fetchData = async () => {
       try {
+        const sysRef = doc(db, "ai_systems", systemId as string);
+        const a1Ref = doc(db, "assessments", v1Id);
+        const a2Ref = doc(db, "assessments", v2Id);
+
         const [sysSnap, a1Snap, a2Snap] = await Promise.all([
-          getDoc(doc(db, "ai_systems", systemId as string)),
-          getDoc(doc(db, "assessments", v1Id)),
-          getDoc(doc(db, "assessments", v2Id))
+          getDoc(sysRef).catch(async () => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: sysRef.path, operation: 'get' }));
+            throw new Error('Permission Denied');
+          }),
+          getDoc(a1Ref).catch(async () => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: a1Ref.path, operation: 'get' }));
+            throw new Error('Permission Denied');
+          }),
+          getDoc(a2Ref).catch(async () => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: a2Ref.path, operation: 'get' }));
+            throw new Error('Permission Denied');
+          })
         ]);
 
         if (!sysSnap.exists() || !a1Snap.exists() || !a2Snap.exists()) return;
 
+        const runs1Query = query(collection(db, "testRuns"), where("assessmentId", "==", v1Id), where("userId", "==", user.uid));
+        const runs2Query = query(collection(db, "testRuns"), where("assessmentId", "==", v2Id), where("userId", "==", user.uid));
+
         const [runs1Snap, runs2Snap] = await Promise.all([
-          getDocs(query(collection(db, "testRuns"), where("assessmentId", "==", v1Id))),
-          getDocs(query(collection(db, "testRuns"), where("assessmentId", "==", v2Id)))
+          getDocs(runs1Query).catch(async () => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'testRuns', operation: 'list' }));
+            throw new Error('Permission Denied');
+          }),
+          getDocs(runs2Query).catch(async () => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'testRuns', operation: 'list' }));
+            throw new Error('Permission Denied');
+          })
         ]);
 
         setData({
@@ -69,14 +94,14 @@ function CompareContent() {
           runs2: runs2Snap.docs.map(d => ({ id: d.id, ...d.data() } as TestRun))
         });
       } catch (err) {
-        console.error("Comparison error:", err);
+        // Error emitted already
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [db, systemId, v1Id, v2Id]);
+  }, [db, user, systemId, v1Id, v2Id]);
 
   if (loading) return <div className="flex justify-center p-24"><Loader2 className="animate-spin text-accent" /></div>;
   if (!data) return <div className="p-8">Data not found.</div>;
@@ -84,7 +109,7 @@ function CompareContent() {
   const scoreDiff = data.a1.overallScore - data.a2.overallScore;
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background text-foreground">
       <AppSidebar />
       <main className="flex-1 md:ml-[260px] p-8 pt-24 md:pt-8 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between mb-10">
