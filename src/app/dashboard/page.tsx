@@ -22,14 +22,17 @@ import {
   Layers,
   BarChart3,
   ShieldCheck,
-  Zap
+  Zap,
+  TrendingUp,
+  TrendingDown,
+  Minus
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { OnboardingModal } from "@/components/onboarding-modal";
 
 /**
- * Enhanced Dashboard with Mini-Cards per AI System and Onboarding
+ * Enhanced Dashboard with Mini-Cards per AI System and Trend Indicators
  */
 export default function Dashboard() {
   const { user } = useUser();
@@ -44,7 +47,7 @@ export default function Dashboard() {
   }, [db, user]);
 
   const { data: systems, loading: systemsLoading } = useCollection<AISystem>(systemsQuery);
-  const [systemLatestAssessments, setSystemLatestAssessments] = useState<Record<string, { assessment: Assessment, count: number }>>({});
+  const [systemStats, setSystemStats] = useState<Record<string, { latest: Assessment, trend: number | null, count: number }>>({});
   const [loadingLatest, setLoadingLatest] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
@@ -60,38 +63,43 @@ export default function Dashboard() {
     fetchProfile();
   }, [user, db]);
 
-  // Fetch latest assessment for each system to populate mini-cards
+  // Fetch latest assessments and trends
   useEffect(() => {
     if (!systems || systems.length === 0 || !db || !user) return;
 
-    const fetchLatest = async () => {
+    const fetchData = async () => {
       setLoadingLatest(true);
-      const results: Record<string, { assessment: Assessment, count: number }> = {};
+      const results: Record<string, { latest: Assessment, trend: number | null, count: number }> = {};
       
       for (const system of systems) {
-        const countQuery = query(collection(db, "assessments"), where("systemId", "==", system.id));
-        const countSnap = await getDocs(countQuery);
-        
-        const latestQuery = query(
+        const q = query(
           collection(db, "assessments"), 
           where("systemId", "==", system.id),
           orderBy("createdAt", "desc"),
-          limit(1)
+          limit(2)
         );
-        const latestSnap = await getDocs(latestQuery);
+        const snap = await getDocs(q);
         
-        if (!latestSnap.empty) {
+        if (!snap.empty) {
+          const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as Assessment));
+          const latest = docs[0];
+          const previous = docs[1];
+          const trend = previous ? latest.overallScore - previous.overallScore : null;
+          
+          const countSnap = await getDocs(query(collection(db, "assessments"), where("systemId", "==", system.id)));
+
           results[system.id] = {
-            assessment: { id: latestSnap.docs[0].id, ...latestSnap.docs[0].data() } as Assessment,
+            latest,
+            trend,
             count: countSnap.size
           };
         }
       }
-      setSystemLatestAssessments(results);
+      setSystemStats(results);
       setLoadingLatest(false);
     };
 
-    fetchLatest();
+    fetchData();
   }, [systems, db, user]);
 
   const getScoreColor = (score: number) => {
@@ -164,7 +172,7 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           {systems?.map((system) => {
-            const data = systemLatestAssessments[system.id];
+            const data = systemStats[system.id];
             const hasAssessment = !!data;
             
             return (
@@ -190,17 +198,25 @@ export default function Dashboard() {
                     </div>
                   ) : hasAssessment ? (
                     <div className="space-y-4">
-                      <div className={cn("rounded-xl p-4 border flex items-center justify-between", getBgColor(data.assessment.overallScore))}>
+                      <div className={cn("rounded-xl p-4 border flex items-center justify-between", getBgColor(data.latest.overallScore))}>
                         <div>
                           <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Latest DISA Score</p>
-                          <p className={cn("text-4xl font-headline font-bold", getScoreColor(data.assessment.overallScore))}>
-                            {data.assessment.overallScore}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className={cn("text-4xl font-headline font-bold", getScoreColor(data.latest.overallScore))}>
+                              {data.latest.overallScore}
+                            </p>
+                            {data.trend !== null && (
+                              <div className={cn("flex items-center text-xs font-bold", data.trend > 0 ? "text-emerald-400" : data.trend < 0 ? "text-destructive" : "text-muted-foreground")}>
+                                {data.trend > 0 ? <TrendingUp className="w-4 h-4 mr-0.5" /> : data.trend < 0 ? <TrendingDown className="w-4 h-4 mr-0.5" /> : <Minus className="w-4 h-4 mr-0.5" />}
+                                {Math.abs(data.trend)}
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">v{data.assessment.version}</p>
+                          <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">v{data.latest.version}</p>
                           <Badge variant="outline" className="text-[10px] h-5">
-                            {data.assessment.overallScore >= 60 ? "STABLE" : "AT RISK"}
+                            {data.latest.overallScore >= 60 ? "STABLE" : "AT RISK"}
                           </Badge>
                         </div>
                       </div>
@@ -210,7 +226,7 @@ export default function Dashboard() {
                           <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-bold uppercase mb-1">
                             <Calendar className="w-3 h-3" /> Tested
                           </div>
-                          <p className="text-xs font-medium">{data.assessment.createdAt.toDate().toLocaleDateString()}</p>
+                          <p className="text-xs font-medium">{data.latest.createdAt.toDate().toLocaleDateString()}</p>
                         </div>
                         <div className="bg-muted/30 p-2 rounded-lg">
                           <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-bold uppercase mb-1">

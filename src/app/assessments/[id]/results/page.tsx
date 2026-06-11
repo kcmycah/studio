@@ -27,7 +27,8 @@ import {
   Mail,
   Send,
   HelpCircle,
-  Download
+  Download,
+  BrainCircuit
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -47,6 +48,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 export default function AssessmentResultsPage() {
   const { id } = useParams();
@@ -63,6 +71,11 @@ export default function AssessmentResultsPage() {
   const [emailLoading, setEmailLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   
+  // AI Explanation State
+  const [explainingId, setExplainingId] = useState<string | null>(null);
+  const [explanation, setExplanation] = useState<string | null>(null);
+  const [explanationPersona, setExplanationPersona] = useState<string | null>(null);
+
   // Filtering state
   const [filters, setFilters] = useState<FilterCriteria>({});
 
@@ -106,6 +119,36 @@ export default function AssessmentResultsPage() {
     };
     fetchData();
   }, [id, db, user]);
+
+  const handleExplainImpact = async (issue: any, persona: string) => {
+    setExplainingId(issue.id);
+    setExplanationPersona(persona);
+    setExplanation(null);
+
+    try {
+      const response = await fetch("/api/explain-impact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          issueDescription: issue.description,
+          issueImpact: issue.impact,
+          disabilityPersona: persona
+        })
+      });
+
+      if (!response.ok) throw new Error("Failed to generate AI insight.");
+      
+      const data = await response.json();
+      setExplanation(data.explanation);
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "AI Insight Failed",
+        description: err.message
+      });
+      setExplainingId(null);
+    }
+  };
 
   // Apply filters to test runs
   const filteredRuns = useMemo(() => {
@@ -260,7 +303,7 @@ export default function AssessmentResultsPage() {
             </div>
           </div>
 
-          {/* KPI Cards with Tooltips */}
+          {/* KPI Cards */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
             {[
               { label: "Overall Score", value: assessment?.overallScore, color: "text-primary", tip: "Composite score weighting technical errors vs functional completion." },
@@ -369,10 +412,16 @@ export default function AssessmentResultsPage() {
           </div>
 
           <section className="mb-12">
-             <h2 className="font-headline text-2xl font-bold mb-4">Persona Results Detail</h2>
+             <div className="flex items-center justify-between mb-6">
+               <h2 className="font-headline text-2xl font-bold">Persona Results Detail</h2>
+               <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                 <BrainCircuit className="w-4 h-4 text-primary" />
+                 AI Persona Insights Available
+               </div>
+             </div>
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                {filteredRuns.map(run => (
-                 <Card key={run.id} className={cn("glass-morphism border-primary/5 p-5", !run.success && "border-destructive/30")}>
+                 <Card key={run.id} className={cn("glass-morphism border-primary/5 p-5 flex flex-col", !run.success && "border-destructive/30")}>
                    <div className="flex justify-between items-start mb-4">
                      <h4 className="font-bold">{run.persona}</h4>
                      {run.success ? (
@@ -381,11 +430,24 @@ export default function AssessmentResultsPage() {
                        <Badge className="bg-destructive/10 text-destructive border-destructive/20">FAILED</Badge>
                      )}
                    </div>
-                   <div className="space-y-2">
+                   <div className="space-y-3 flex-grow">
                      <p className="text-xs text-muted-foreground">Found {run.accessibilityIssues.length} issues for this persona.</p>
-                     {run.accessibilityIssues.slice(0, 2).map((issue, idx) => (
-                       <div key={idx} className="bg-muted/30 p-2 rounded text-[10px]">
-                         <span className="font-bold uppercase mr-1">[{issue.impact}]</span> {issue.description}
+                     {run.accessibilityIssues.slice(0, 3).map((issue, idx) => (
+                       <div key={idx} className="bg-muted/30 p-2.5 rounded-lg border border-border/50">
+                         <div className="flex items-center justify-between gap-2 mb-1">
+                           <span className="font-bold uppercase text-[9px] text-primary">[{issue.impact}]</span>
+                           <Button 
+                             variant="ghost" 
+                             size="sm" 
+                             className="h-5 px-1 text-[8px] hover:text-primary"
+                             onClick={() => handleExplainImpact(issue, run.persona)}
+                             disabled={explainingId === issue.id}
+                           >
+                             {explainingId === issue.id ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <BrainCircuit className="w-2.5 h-2.5 mr-1" />}
+                             Explain Impact
+                           </Button>
+                         </div>
+                         <p className="text-[10px] leading-tight text-muted-foreground">{issue.description}</p>
                        </div>
                      ))}
                    </div>
@@ -401,6 +463,29 @@ export default function AssessmentResultsPage() {
               Automated testing catches only 30-40% of accessibility issues. Manual testing with real users is also required to ensure full DISA framework compliance.
             </AlertDescription>
           </Alert>
+
+          {/* AI Explanation Dialog */}
+          <Dialog open={!!explanation} onOpenChange={() => setExplanation(null)}>
+            <DialogContent className="glass-morphism border-primary/20 sm:max-w-md">
+              <DialogHeader>
+                <div className="flex items-center gap-2 mb-2">
+                  <BrainCircuit className="w-5 h-5 text-primary" />
+                  <DialogTitle className="font-headline">AI Impact Analysis</DialogTitle>
+                </div>
+                <DialogDescription className="text-sm font-bold text-muted-foreground uppercase">
+                  Persona: {explanationPersona}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                <p className="text-sm leading-relaxed text-foreground">
+                  {explanation}
+                </p>
+              </div>
+              <div className="text-[10px] text-muted-foreground italic border-t border-border pt-4">
+                This insight is generated by AI to help explain the human consequence of technical failures.
+              </div>
+            </DialogContent>
+          </Dialog>
         </main>
       </TooltipProvider>
     </AuthGuard>
