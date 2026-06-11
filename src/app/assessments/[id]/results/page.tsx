@@ -133,8 +133,8 @@ export default function AssessmentResultsPage() {
   };
 
   const handleSendEmail = async () => {
-    if (!user?.email) {
-      toast({ variant: "destructive", title: "Verification Required", description: "You need a verified email address to receive reports." });
+    if (!user?.email || !assessment || !system || !summary) {
+      toast({ variant: "destructive", title: "Missing Data", description: "Assessment results are still loading." });
       return;
     }
     
@@ -144,11 +144,21 @@ export default function AssessmentResultsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          assessmentId: id,
-          recipientEmail: user.email
+          recipientEmail: user.email,
+          systemName: system.name,
+          overallScore: assessment.overallScore,
+          version: assessment.version,
+          summaryText: summary.summaryText,
+          recommendation: summary.recommendation,
+          performanceLevel: summary.performanceLevel,
+          testRuns: rawTestRuns.map(r => ({ persona: r.persona, success: r.success }))
         })
       });
-      if (!res.ok) throw new Error("Email service failed.");
+      
+      const data = await res.json();
+      
+      if (!res.ok) throw new Error(data.error || "Email service failed.");
+      
       toast({ title: "Briefing Delivered", description: `The executive report has been sent to ${user.email}.` });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Delivery Error", description: err.message });

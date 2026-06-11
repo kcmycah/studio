@@ -12,20 +12,17 @@ service cloud.firestore {
     match /ai_systems/{doc} {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
     // Assessments
     match /assessments/{doc} {
-      // Allow single document fetch if owner or system owner
-      allow get: if request.auth != null && 
-        (resource.data.userId == request.auth.uid ||
-         (resource.data.systemId != null && isSystemOwner(resource.data.systemId)));
+      // Allow single document fetch if owner
+      allow get: if request.auth != null && resource.data.userId == request.auth.uid;
       
       // Allow collection queries only if filtered by userId
-      allow list: if request.auth != null && request.auth.uid == request.query.limit > 0 || resource.data.userId == request.auth.uid;
-      // Fixed list rule to be simpler for query verification
-      allow list: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow list: if request.auth != null && request.query.limit <= 100 && resource.data.userId == request.auth.uid;
       
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
@@ -33,11 +30,8 @@ service cloud.firestore {
 
     // Test runs
     match /testRuns/{doc} {
-      // Allow single document fetch if owner or assessment owner
-      allow get: if request.auth != null && 
-        (resource.data.userId == request.auth.uid ||
-         (resource.data.assessmentId != null && 
-          get(/databases/$(database)/documents/assessments/$(resource.data.assessmentId)).data.userId == request.auth.uid));
+      // Allow single document fetch if owner
+      allow get: if request.auth != null && resource.data.userId == request.auth.uid;
       
       // Allow collection queries only if filtered by userId
       allow list: if request.auth != null && resource.data.userId == request.auth.uid;
@@ -57,7 +51,7 @@ service cloud.firestore {
       allow read: if false; 
     }
 
-    // Catch-all for user profiles
+    // User profiles
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
