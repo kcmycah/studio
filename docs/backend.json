@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "AISystem": {
@@ -20,10 +21,11 @@
       "properties": {
         "systemId": { "type": "string" },
         "userId": { "type": "string" },
+        "version": { "type": "string" },
         "overallScore": { "type": "number" },
         "createdAt": { "type": "object", "format": "date-time" }
       },
-      "required": ["systemId", "userId", "overallScore"]
+      "required": ["systemId", "userId", "overallScore", "version"]
     },
     "TestRun": {
       "title": "Test Run",
@@ -40,19 +42,41 @@
             "properties": {
               "id": { "type": "string" },
               "impact": { "type": "string" },
-              "description": { "type": "string" }
+              "description": { "type": "string" },
+              "wcagLevel": { "type": "string", "enum": ["A", "AA", "AAA"] }
             }
           }
         },
         "createdAt": { "type": "object", "format": "date-time" }
       },
       "required": ["assessmentId", "persona", "success"]
+    },
+    "User": {
+      "title": "User Profile",
+      "description": "Extended user data for monetization and settings.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "subscriptionStatus": { "type": "string", "enum": ["free", "pro", "enterprise"] },
+        "lemonSqueezyCustomerId": { "type": "string" },
+        "settings": {
+          "type": "object",
+          "properties": {
+            "emailResults": { "type": "boolean" },
+            "scheduledMonitor": { "type": "object" }
+          }
+        }
+      }
     }
   },
   "auth": {
     "providers": ["password"]
   },
   "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and subscription data."
+    },
     "/ai_systems/{systemId}": {
       "schema": "AISystem",
       "description": "Inventory of AI systems per user."

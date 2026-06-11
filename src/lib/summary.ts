@@ -1,27 +1,22 @@
-import { TestRun } from './types';
 
-/**
- * Output interface for the deterministic summary engine.
- */
+import { TestRun, ImpactLevel } from './types';
+
 export interface SummaryOutput {
   text: string;
   recommendation: string;
   criticalFlags: string[];
 }
 
-/**
- * Interface for the aggregated issue data.
- */
 export interface TopIssue {
   id: string;
-  impact: string;
+  impact: ImpactLevel;
   count: number;
   description: string;
 }
 
 /**
  * Generates a deterministic executive summary based on DISA score and test findings.
- * This replaces the previous GenAI-powered summary with a faster, more predictable logic.
+ * Includes score context, pass rates, and top technical risks.
  */
 export function generateExecutiveSummary(
   score: number,
@@ -35,40 +30,40 @@ export function generateExecutiveSummary(
   // Performance level based on score
   let performance = '';
   if (score < 40) {
-    performance = 'critical issues requiring immediate action';
+    performance = 'CRITICAL issues requiring immediate intervention';
   } else if (score < 60) {
-    performance = 'moderate issues that need addressing';
+    performance = 'significant accessibility gaps present';
   } else if (score < 80) {
-    performance = 'fair accessibility with room for improvement';
+    performance = 'fair accessibility with moderate improvement needed';
   } else {
-    performance = 'strong accessibility compliance';
+    performance = 'strong DISA framework compliance';
   }
 
   // Extract failed personas
   const failedPersonas = testRuns.filter(run => !run.success).map(run => run.persona);
   const criticalFlags = failedPersonas.length > 0 
-    ? [`Failed personas: ${failedPersonas.join(', ')}`]
+    ? [`Blocked personas: ${failedPersonas.join(', ')}`]
     : [];
 
   // Format top issues (max 3)
   const topIssuesText = topIssues.slice(0, 3).map(issue => 
-    `${issue.id.replace(/-/g, ' ')} (${issue.impact}) – ${issue.count} occurrence(s)`
+    `${issue.id.replace(/-/g, ' ')} [${issue.impact}]`
   ).join('; ');
 
-  const summaryText = `DISA score: ${score} (${performance}). ${passed} of ${total} personas passed (${passRate}%). Top accessibility issues: ${topIssuesText || 'None detected by automated scan.'}.`;
+  const summaryText = `DISA Audit results: ${score}/100 (${performance}). Successfully accommodated ${passed} of ${total} personas (${passRate}% functional equity). Top technical risks: ${topIssuesText || 'None detected by automated audit.'}.`;
 
-  // Recommendation based on score and issues
+  // Recommendation logic
   let recommendation = '';
   if (score < 60) {
-    recommendation = 'Immediately fix all critical and serious issues, then re-run tests.';
+    recommendation = 'IMMEDIATE ACTION: Resolve all critical blockages and re-audit. System is currently at high risk for outcome disparity.';
   } else if (score < 80) {
-    recommendation = 'Address the top recurring issues and conduct manual testing with disabled users.';
+    recommendation = 'PRIORITY FIX: Address recurring serious issues and initiate manual usability testing with the flagged personas.';
   } else {
-    recommendation = 'Maintain current standards, but continue manual audits to catch the remaining 60-70% of issues.';
+    recommendation = 'OPTIMIZATION: Maintain current standards and focus on WCAG AAA compliance for enhanced inclusivity.';
   }
 
   if (failedPersonas.length > 0) {
-    recommendation += ` Pay special attention to personas: ${failedPersonas.join(', ')}.`;
+    recommendation += ` Critical attention required for: ${failedPersonas.join(', ')}.`;
   }
 
   return {

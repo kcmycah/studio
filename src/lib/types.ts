@@ -1,6 +1,10 @@
+
 import { Timestamp } from "firebase/firestore";
 
 export type AISystemType = "Chatbot" | "Voice Assistant";
+export type SubscriptionStatus = "free" | "pro" | "enterprise";
+export type WCAGLevel = "A" | "AA" | "AAA";
+export type ImpactLevel = "critical" | "serious" | "moderate" | "minor";
 
 export interface AISystem {
   id: string;
@@ -13,23 +17,18 @@ export interface AISystem {
 
 export interface AccessibilityIssue {
   id: string;
-  impact: "critical" | "serious" | "moderate" | "minor";
+  impact: ImpactLevel;
   description: string;
+  wcagLevel?: WCAGLevel;
   nodes?: string[];
 }
 
-/**
- * The raw result returned from the simulation API.
- */
 export interface TestRunResult {
   persona: string;
   success: boolean;
   accessibilityIssues: AccessibilityIssue[];
 }
 
-/**
- * The full record of a test run stored in Firestore.
- */
 export interface TestRun extends TestRunResult {
   id: string;
   assessmentId: string;
@@ -40,8 +39,23 @@ export interface Assessment {
   id: string;
   systemId: string;
   userId: string;
+  version: string;
   overallScore: number;
   createdAt: Timestamp;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  subscriptionStatus: SubscriptionStatus;
+  lemonSqueezyCustomerId?: string;
+  settings: {
+    emailResults: boolean;
+    scheduledMonitor?: {
+      enabled: boolean;
+      frequency: "daily" | "weekly" | "monthly";
+    };
+  };
 }
 
 export const PERSONAS = [
