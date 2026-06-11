@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
@@ -173,12 +172,12 @@ export default function AssessmentResultsPage() {
     ];
   }, [assessment]);
 
+  const isPro = userProfile?.subscriptionStatus === 'pro' || userProfile?.subscriptionStatus === 'enterprise';
+
   const handleApplyFilter = (newFilters: any) => {
     setFilters(newFilters);
     if (user) saveUserPreferences(user.uid, { filters: newFilters });
   };
-
-  const isPro = userProfile?.subscriptionStatus === 'pro' || userProfile?.subscriptionStatus === 'enterprise';
 
   const handleExportCSV = () => {
     if (!isPro) {
@@ -190,32 +189,39 @@ export default function AssessmentResultsPage() {
       return;
     }
 
-    const rows = [
-      ["Persona", "Success", "Issue ID", "Impact", "Description", "WCAG Level"],
-    ];
+    const headers = ["Persona", "Success", "Issue ID", "Impact", "Description", "WCAG Level"];
+    const csvRows = [headers.join(",")];
 
     rawTestRuns.forEach(run => {
+      const successStr = run.success ? "YES" : "NO";
       if (run.accessibilityIssues.length === 0) {
-        rows.push([run.persona, run.success ? "YES" : "NO", "N/A", "N/A", "N/A", "N/A"]);
+        csvRows.push([
+          `"${run.persona}"`,
+          `"${successStr}"`,
+          `"N/A"`,
+          `"N/A"`,
+          `"N/A"`,
+          `"N/A"`
+        ].join(","));
       } else {
         run.accessibilityIssues.forEach(issue => {
-          rows.push([
-            run.persona,
-            run.success ? "YES" : "NO",
-            issue.id,
-            issue.impact,
-            issue.description.replace(/,/g, ";"),
-            issue.wcagLevel || "N/A"
-          ]);
+          csvRows.push([
+            `"${run.persona}"`,
+            `"${successStr}"`,
+            `"${issue.id}"`,
+            `"${issue.impact}"`,
+            `"${issue.description.replace(/"/g, '""')}"`,
+            `"${issue.wcagLevel || "N/A"}"`
+          ].join(","));
         });
       }
     });
 
-    const csvContent = "data:text/csv;charset=utf-8," + rows.map(r => r.join(",")).join("\n");
+    const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `DISA_Audit_${system?.name}_v${assessment?.version}.csv`);
+    link.setAttribute("download", `DISA_Audit_${system?.name || 'Audit'}_v${assessment?.version || '1.0'}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -454,6 +460,24 @@ export default function AssessmentResultsPage() {
                     </div>
                   ))}
                   {topIssues.length === 0 && <p className="text-sm text-muted-foreground italic">No issues detected.</p>}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2"><CardTitle className="text-xs uppercase tracking-widest text-muted-foreground">WCAG Compliance</CardTitle></CardHeader>
+                <CardContent className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <p className="text-lg font-bold">{kpis.totalA}</p>
+                    <p className="text-[10px] text-muted-foreground font-bold">LEVEL A</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold">{kpis.totalAA}</p>
+                    <p className="text-[10px] text-muted-foreground font-bold">LEVEL AA</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold">{kpis.totalAAA}</p>
+                    <p className="text-[10px] text-muted-foreground font-bold">LEVEL AAA</p>
+                  </div>
                 </CardContent>
               </Card>
               

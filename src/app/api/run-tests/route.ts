@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
             id: "load-failure", 
             impact: "critical", 
             description: "The automated auditor failed to load the interface or interact with core elements for this persona.",
+            wcagLevel: "A",
             nodes: []
           }
         ];
@@ -63,6 +64,7 @@ export async function POST(req: NextRequest) {
             id: "image-alt",
             impact: "critical",
             description: "Images must have alternate text for screen readers.",
+            wcagLevel: "A",
             nodes: Array.from({ length: issueCountMultiplier }, (_, i) => `<img src='/asset-${i}.png'>`)
           });
           
@@ -71,6 +73,7 @@ export async function POST(req: NextRequest) {
               id: "aria-labels",
               impact: "serious",
               description: "Interactive elements lack descriptive ARIA labels.",
+              wcagLevel: "AA",
               nodes: ["<button class='send-btn'>...</button>"]
             });
           }
@@ -81,6 +84,7 @@ export async function POST(req: NextRequest) {
             id: "reading-level",
             impact: "moderate",
             description: "Content exceeds recommended reading complexity for cognitive inclusive design.",
+            wcagLevel: "AAA",
             nodes: ["<p class='ai-response'>The multifaceted paradigm of neural architectures...</p>"]
           });
         }
@@ -90,6 +94,7 @@ export async function POST(req: NextRequest) {
             id: "focus-indicator",
             impact: "serious",
             description: "Keyboard focus indicators are missing or have insufficient contrast.",
+            wcagLevel: "AA",
             nodes: ["<a href='/help'>Help</a>"]
           });
         }
@@ -100,6 +105,7 @@ export async function POST(req: NextRequest) {
             id: "color-contrast",
             impact: "serious",
             description: "Background and foreground colors do not meet WCAG AA contrast ratios.",
+            wcagLevel: "AA",
             nodes: ["<div class='chat-bubble-text'>...</div>"]
           });
         }
