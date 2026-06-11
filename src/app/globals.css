@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -24,6 +25,10 @@
     --input: 240 5.9% 90%;
     --ring: 234 58% 60%;
     --radius: 0.5rem;
+    
+    /* Chart Colors */
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
   }
 
   .dark {
@@ -46,6 +51,9 @@
     --border: 240 3.7% 15.9%; /* #272727 */
     --input: 240 3.7% 15.9%;
     --ring: 234 58% 60%;
+    
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
   }
 }
 
