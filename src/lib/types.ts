@@ -19,7 +19,7 @@ export interface AccessibilityIssue {
   id: string;
   impact: ImpactLevel;
   description: string;
-  wcagLevel?: WCAGLevel;
+  wcagLevel: WCAGLevel;
   nodes?: string[];
 }
 
@@ -41,6 +41,17 @@ export interface Assessment {
   userId: string;
   version: string;
   overallScore: number;
+  domainScores?: {
+    accessibility: number;
+    biasRisk: number;
+    transparency: number;
+    equityData: number;
+  };
+  details?: {
+    biasExplanation?: string;
+    totalViolations?: number;
+    crawledAt?: Timestamp;
+  };
   createdAt: Timestamp;
 }
 
