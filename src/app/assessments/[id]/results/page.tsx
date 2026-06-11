@@ -21,15 +21,17 @@ import {
   Loader2,
   Sparkles,
   ShieldAlert,
-  ArrowLeft
+  ArrowLeft,
+  ChevronRight
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { generateExecutiveSummary } from "@/lib/summary";
 
 /**
  * Assessment Results Page
- * Displays the findings of a DISA audit including aggregated issues and AI-generated summary.
+ * Displays the findings of a DISA audit including aggregated issues and a deterministic summary.
  */
 export default function AssessmentResultsPage() {
   const { id } = useParams();
@@ -40,8 +42,6 @@ export default function AssessmentResultsPage() {
   const [system, setSystem] = useState<AISystem | null>(null);
   const [testRuns, setTestRuns] = useState<TestRun[]>([]);
   const [loading, setLoading] = useState(true);
-  const [executiveSummary, setExecutiveSummary] = useState<string>("");
-  const [summarizing, setSummarizing] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -103,55 +103,11 @@ export default function AssessmentResultsPage() {
       .slice(0, 5);
   }, [testRuns]);
 
-  const handleGenSummary = async () => {
-    if (!assessment || !system || testRuns.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "Incomplete Data",
-        description: "Cannot generate summary without test results."
-      });
-      return;
-    }
-    
-    setSummarizing(true);
-    try {
-      // Use Route Handler instead of direct Server Action to avoid 15s timeout
-      const response = await fetch("/api/generate-summary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          overallScore: assessment.overallScore,
-          systemName: system.name,
-          testRunSummaries: testRuns.map(run => ({
-            persona: run.persona,
-            success: run.success,
-            accessibilityIssues: run.accessibilityIssues.map(issue => ({
-              id: issue.id,
-              description: issue.description,
-              impact: issue.impact
-            }))
-          }))
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to generate AI insights.");
-      }
-
-      const result = await response.json();
-      setExecutiveSummary(result.executiveSummary);
-    } catch (err: any) {
-      console.error("AI Generation Error:", err);
-      toast({ 
-        variant: "destructive", 
-        title: "AI Generation Failed", 
-        description: err.message || "The AI service timed out or encountered an error. Please try again." 
-      });
-    } finally {
-      setSummarizing(false);
-    }
-  };
+  // Generate deterministic summary
+  const summary = useMemo(() => {
+    if (!assessment || testRuns.length === 0) return null;
+    return generateExecutiveSummary(assessment.overallScore, testRuns, topIssues);
+  }, [assessment, testRuns, topIssues]);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-emerald-400";
@@ -230,32 +186,45 @@ export default function AssessmentResultsPage() {
             </div>
           </Card>
 
-          <Card className="md:col-span-2 glass-morphism border-primary/20 p-6 print:border-border print:bg-white print:text-black">
+          <Card className="md:col-span-2 glass-morphism border-primary/20 p-6 print:border-border print:bg-white print:text-black overflow-hidden relative">
             <div className="flex justify-between items-center mb-6">
               <h3 className="font-headline text-xl font-bold flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-primary" />
                 Executive Summary
               </h3>
-              {!executiveSummary && (
-                <Button size="sm" onClick={handleGenSummary} disabled={summarizing} className="print:hidden">
-                  {summarizing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                  Generate AI Insights
-                </Button>
-              )}
             </div>
-            <div className="prose prose-invert max-w-none text-muted-foreground print:text-black">
-              {executiveSummary ? (
-                <div className="animate-in fade-in duration-500 whitespace-pre-wrap leading-relaxed">{executiveSummary}</div>
-              ) : summarizing ? (
-                <div className="space-y-4">
-                  <div className="h-4 bg-muted/50 animate-pulse rounded w-3/4"></div>
-                  <div className="h-4 bg-muted/50 animate-pulse rounded w-5/6"></div>
-                  <div className="h-4 bg-muted/50 animate-pulse rounded w-2/3"></div>
-                  <div className="h-4 bg-muted/50 animate-pulse rounded w-1/2"></div>
+            
+            {summary ? (
+              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <p className="text-lg leading-relaxed">{summary.text}</p>
+                <div className="bg-primary/5 p-4 rounded-xl border border-primary/10 print:border-border print:bg-gray-50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                    <span className="font-bold text-sm text-primary uppercase tracking-tight">Recommendation</span>
+                  </div>
+                  <p className="text-muted-foreground print:text-black italic">{summary.recommendation}</p>
                 </div>
-              ) : (
-                <p className="italic">Click "Generate AI Insights" to visualize the executive summary of this audit. This process uses Gemini 1.5 Flash and may take up to 30 seconds.</p>
-              )}
+                
+                {summary.criticalFlags.length > 0 && (
+                  <div className="space-y-2">
+                    {summary.criticalFlags.map((flag, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-destructive bg-destructive/5 px-3 py-1 rounded-full w-fit text-xs font-medium border border-destructive/10">
+                        <XCircle className="w-3 h-3" />
+                        {flag}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-12 text-muted-foreground italic">
+                Gathering assessment metrics...
+              </div>
+            )}
+            
+            <div className="mt-6 pt-4 border-t border-primary/5 text-[10px] text-muted-foreground flex items-center gap-1">
+              <Info className="w-3 h-3" />
+              Automated testing catches only 30-40% of issues. Manual verification is always required.
             </div>
           </Card>
         </div>
