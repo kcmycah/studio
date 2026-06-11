@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { Navbar } from "@/components/navbar";
 import { useUser, useFirestore } from "@/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { UserProfile } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ const PLANS = [
       "Up to 2 AI systems",
       "Manual DISA audits",
       "Deterministic summaries",
-      "Version history (last 2)",
+      "Version history (all)",
       "Email results"
     ],
     buttonText: "Current Plan",
@@ -39,8 +39,9 @@ const PLANS = [
       "Up to 10 AI systems",
       "Unlimited version history",
       "Any-version comparison",
-      "Advanced KPI filtering",
+      "Advanced KPI filtering (WCAG)",
       "Scheduled monitoring",
+      "CSV Data Export",
       "Priority email support"
     ],
     buttonText: "Upgrade to Pro",
@@ -55,8 +56,7 @@ const PLANS = [
     features: [
       "Unlimited AI systems",
       "API access to raw data",
-      "CSV data exports",
-      "SSO & Team management",
+      "Team management",
       "24/7 Account manager",
       "Custom DISA weighting"
     ],
@@ -76,10 +76,9 @@ export default function BillingPage() {
   useEffect(() => {
     if (!user || !db) return;
     const fetchProfile = async () => {
-      const q = query(collection(db, "users"), where("email", "==", user.email));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        setProfile({ id: snap.docs[0].id, ...snap.docs[0].data() } as UserProfile);
+      const snap = await getDoc(doc(db, "users", user.uid));
+      if (snap.exists()) {
+        setProfile({ id: snap.id, ...snap.data() } as UserProfile);
       }
       setLoading(false);
     };
@@ -138,7 +137,7 @@ export default function BillingPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {PLANS.map((plan) => {
-            const isCurrent = profile?.subscriptionStatus === plan.id;
+            const isCurrent = (profile?.subscriptionStatus || 'free') === plan.id;
             
             return (
               <Card key={plan.id} className={cn(
@@ -177,7 +176,7 @@ export default function BillingPage() {
                   <Button 
                     className="w-full h-12" 
                     variant={plan.highlight ? "default" : "outline"}
-                    disabled={plan.disabled || isCurrent || (checkoutLoading === plan.name)}
+                    disabled={plan.disabled || isCurrent || (!!checkoutLoading && checkoutLoading === plan.name)}
                     onClick={() => plan.variantId && handleUpgrade(plan.variantId, plan.name)}
                   >
                     {checkoutLoading === plan.name ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}

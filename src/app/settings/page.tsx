@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { Navbar } from "@/components/navbar";
 import { useUser, useFirestore } from "@/firebase";
-import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { UserProfile } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,10 +34,10 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!user || !db) return;
     const fetchProfile = async () => {
-      const q = query(collection(db, "users"), where("email", "==", user.email));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        setProfile({ id: snap.docs[0].id, ...snap.docs[0].data() } as UserProfile);
+      const userRef = doc(db, "users", user.uid);
+      const snap = await getDoc(userRef);
+      if (snap.exists()) {
+        setProfile({ id: snap.id, ...snap.data() } as UserProfile);
       }
       setLoading(false);
     };
@@ -45,10 +45,10 @@ export default function SettingsPage() {
   }, [user, db]);
 
   const handleSave = async () => {
-    if (!profile || !db) return;
+    if (!profile || !db || !user) return;
     setSaving(true);
     try {
-      const userRef = doc(db, "users", profile.id);
+      const userRef = doc(db, "users", user.uid);
       await updateDoc(userRef, {
         settings: profile.settings
       });

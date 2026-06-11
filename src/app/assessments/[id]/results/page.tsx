@@ -6,7 +6,7 @@ import { AuthGuard } from "@/components/auth-guard";
 import { Navbar } from "@/components/navbar";
 import { useFirestore, useUser } from "@/firebase";
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
-import { AISystem, Assessment, TestRun, ImpactLevel, WCAGLevel } from "@/lib/types";
+import { AISystem, Assessment, TestRun, ImpactLevel, WCAGLevel, UserProfile } from "@/lib/types";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,8 @@ import {
   BarChart3,
   Mail,
   Send,
-  HelpCircle
+  HelpCircle,
+  Download
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -57,6 +58,7 @@ export default function AssessmentResultsPage() {
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [system, setSystem] = useState<AISystem | null>(null);
   const [rawTestRuns, setRawTestRuns] = useState<TestRun[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [emailLoading, setEmailLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -69,10 +71,18 @@ export default function AssessmentResultsPage() {
   }, []);
 
   useEffect(() => {
-    if (!id || !db) return;
+    if (!id || !db || !user) return;
     const fetchData = async () => {
       try {
-        const assessmentSnap = await getDoc(doc(db, "assessments", id as string));
+        const [assessmentSnap, profileSnap] = await Promise.all([
+          getDoc(doc(db, "assessments", id as string)),
+          getDoc(doc(db, "users", user.uid))
+        ]);
+
+        if (profileSnap.exists()) {
+          setUserProfile({ id: profileSnap.id, ...profileSnap.data() } as UserProfile);
+        }
+
         if (!assessmentSnap.exists()) {
           setLoading(false);
           return;
@@ -95,7 +105,7 @@ export default function AssessmentResultsPage() {
       }
     };
     fetchData();
-  }, [id, db]);
+  }, [id, db, user]);
 
   // Apply filters to test runs
   const filteredRuns = useMemo(() => {
@@ -138,6 +148,8 @@ export default function AssessmentResultsPage() {
     return generateExecutiveSummary(assessment.overallScore, rawTestRuns, topIssues);
   }, [assessment, rawTestRuns, topIssues]);
 
+  const isPro = userProfile?.subscriptionStatus === 'pro' || userProfile?.subscriptionStatus === 'enterprise';
+
   const handleEmailResults = async () => {
     if (!user?.email || !system || !assessment || !summary) return;
     
@@ -173,6 +185,38 @@ export default function AssessmentResultsPage() {
     }
   };
 
+  const exportToCSV = () => {
+    if (!isPro) {
+      toast({
+        title: "Pro Feature",
+        description: "Upgrade to Pro to export audit data to CSV.",
+      });
+      return;
+    }
+
+    const headers = ["Persona", "Success", "Issue ID", "Impact", "Description"];
+    const rows = filteredRuns.flatMap(run => 
+      run.accessibilityIssues.map(issue => [
+        run.persona,
+        run.success ? "YES" : "NO",
+        issue.id,
+        issue.impact,
+        issue.description.replace(/,/g, " ")
+      ])
+    );
+
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `DISA-Audit-${system?.name}-v${assessment?.version}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
@@ -198,10 +242,14 @@ export default function AssessmentResultsPage() {
                 Audit conducted on {mounted && assessment ? assessment.createdAt.toDate().toLocaleString() : ""}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button variant="outline" className="h-11" onClick={handleEmailResults} disabled={emailLoading}>
                 {emailLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
                 Email Results
+              </Button>
+              <Button variant="outline" className="h-11" onClick={exportToCSV}>
+                <Download className="w-4 h-4 mr-2" />
+                CSV Export { !isPro && <Badge className="ml-2 scale-75 bg-primary text-[8px]">PRO</Badge> }
               </Button>
               <Button className="h-11" asChild>
                 <Link href={`/systems/${system?.id}/versions`}>
@@ -255,17 +303,27 @@ export default function AssessmentResultsPage() {
                 </SelectContent>
               </Select>
 
-              <Select onValueChange={(v) => setFilters({ ...filters, wcagLevel: v === 'all' ? undefined : v as WCAGLevel })}>
-                <SelectTrigger className="w-[140px] h-9">
-                  <SelectValue placeholder="WCAG Level" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Levels</SelectItem>
-                  <SelectItem value="A">Level A</SelectItem>
-                  <SelectItem value="AA">Level AA</SelectItem>
-                  <SelectItem value="AAA">Level AAA</SelectItem>
-                </SelectContent>
-              </Select>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                   <div>
+                    <Select 
+                      disabled={!isPro}
+                      onValueChange={(v) => setFilters({ ...filters, wcagLevel: v === 'all' ? undefined : v as WCAGLevel })}
+                    >
+                      <SelectTrigger className="w-[140px] h-9">
+                        <SelectValue placeholder="WCAG Level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Levels</SelectItem>
+                        <SelectItem value="A">Level A</SelectItem>
+                        <SelectItem value="AA">Level AA</SelectItem>
+                        <SelectItem value="AAA">Level AAA</SelectItem>
+                      </SelectContent>
+                    </Select>
+                   </div>
+                </TooltipTrigger>
+                {!isPro && <TooltipContent>Upgrade to Pro for WCAG filtering.</TooltipContent>}
+              </Tooltip>
 
               <Button variant="ghost" size="sm" onClick={() => setFilters({})}>Clear Filters</Button>
             </div>
