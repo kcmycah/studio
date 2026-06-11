@@ -19,7 +19,9 @@ import {
   Plus,
   User,
   Crown,
-  AlertTriangle
+  AlertTriangle,
+  Menu,
+  X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +29,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { UserProfile } from "@/lib/types";
 import { ReportIssueDialog } from "./report-issue-dialog";
+import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -67,8 +70,8 @@ export function AppSidebar() {
 
   const isPro = profile?.subscriptionStatus === 'pro' || profile?.subscriptionStatus === 'enterprise';
 
-  return (
-    <aside className="fixed left-0 top-0 hidden h-full w-[260px] flex-col border-r bg-card md:flex z-50">
+  const SidebarContent = () => (
+    <div className="flex h-full flex-col bg-card">
       <div className="flex h-16 items-center px-6 border-b">
         <Link href="/dashboard" className="flex items-center gap-2">
           <div className="bg-accent p-1.5 rounded-md shadow-sm">
@@ -101,7 +104,6 @@ export function AppSidebar() {
       </nav>
 
       <div className="p-4 border-t space-y-4">
-        {/* Report Issue Section */}
         <div className="px-3 py-2">
           <Button 
             variant="ghost" 
@@ -149,6 +151,33 @@ export function AppSidebar() {
       </div>
 
       <ReportIssueDialog open={reportOpen} onOpenChange={setReportOpen} />
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 border-b bg-background flex items-center justify-between px-6 z-40">
+        <Link href="/dashboard" className="flex items-center gap-2">
+          <ShieldCheck className="w-6 h-6 text-accent" />
+          <span className="font-black tracking-tighter text-lg">DISA Audit</span>
+        </Link>
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <Menu className="w-6 h-6" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="p-0 w-[280px]">
+            <SidebarContent />
+          </SheetContent>
+        </Sheet>
+      </div>
+
+      {/* Desktop Sidebar */}
+      <aside className="fixed left-0 top-0 hidden h-full w-[260px] flex-col border-r bg-card md:flex z-50">
+        <SidebarContent />
+      </aside>
+    </>
   );
 }

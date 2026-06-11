@@ -4,7 +4,8 @@
 import { useState, useEffect } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppSidebar } from "@/components/app-sidebar";
-import { useUser, useFirestore } from "@/firebase";
+import { useUser, useFirestore, useAuth } from "@/firebase";
+import { signOut } from "firebase/auth";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { UserProfile } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -19,20 +20,24 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { User, Mail, Bell, Calendar, Loader2, Save, ShieldAlert } from "lucide-react";
+import { User, Mail, Bell, Calendar, Loader2, Save, ShieldAlert, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useRouter } from "next/navigation";
 
 export default function SettingsPage() {
   const { user } = useUser();
   const db = useFirestore();
+  const auth = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     if (!user || !db) return;
@@ -61,7 +66,6 @@ export default function SettingsPage() {
       settings: profile.settings
     };
 
-    // Following non-blocking mutation pattern
     updateDoc(userRef, updateData)
       .then(() => {
         toast({
@@ -81,6 +85,18 @@ export default function SettingsPage() {
       });
   };
 
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await signOut(auth);
+      toast({ title: "Signed out successfully" });
+      router.push("/login");
+    } catch (error) {
+      toast({ variant: "destructive", title: "Sign out failed" });
+      setLoggingOut(false);
+    }
+  };
+
   const isPro = profile?.subscriptionStatus === 'pro' || profile?.subscriptionStatus === 'enterprise';
 
   if (loading) return (
@@ -93,7 +109,7 @@ export default function SettingsPage() {
     <AuthGuard>
       <div className="flex min-h-screen bg-background">
         <AppSidebar />
-        <main className="flex-1 md:ml-[260px] p-8 max-w-4xl mx-auto w-full">
+        <main className="flex-1 md:ml-[260px] p-8 pt-24 md:pt-8 max-w-4xl mx-auto w-full">
           <header className="mb-10">
             <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
             <p className="text-muted-foreground mt-1">Manage your workspace preferences and automation.</p>
@@ -203,7 +219,28 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
 
-            <div className="flex justify-end gap-4">
+            <Card className="border-destructive/20 bg-destructive/5">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2 text-destructive">
+                  <LogOut className="w-5 h-5" />
+                  Session Management
+                </CardTitle>
+                <CardDescription>Terminate your current session and sign out from this device.</CardDescription>
+              </CardHeader>
+              <CardFooter>
+                <Button 
+                  variant="destructive" 
+                  onClick={handleLogout} 
+                  disabled={loggingOut}
+                  className="w-full font-bold"
+                >
+                  {loggingOut ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Sign Out from Workspace
+                </Button>
+              </CardFooter>
+            </Card>
+
+            <div className="flex justify-end gap-4 pb-20 md:pb-0">
               <Button variant="ghost" onClick={() => window.location.reload()}>Cancel</Button>
               <Button onClick={handleSave} disabled={saving} className="bg-accent text-white hover:bg-accent/90 px-8">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
