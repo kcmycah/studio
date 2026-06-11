@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -24,13 +23,14 @@ import {
   Mail,
   FileSpreadsheet,
   ShieldAlert,
-  Briefcase
+  Briefcase,
+  PlayCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { computeKPIs } from "@/lib/filtering";
-import { generateExecutiveSummary } from "@/lib/summary";
+import { generateExecutiveSummary } from "@/lib/executiveSummary";
 
 export default function AssessmentResultsPage() {
   const { id } = useParams();
@@ -43,6 +43,8 @@ export default function AssessmentResultsPage() {
   const [rawTestRuns, setRawTestRuns] = useState<TestRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [ttsLoading, setTtsLoading] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id || !db || !user) return;
@@ -76,19 +78,48 @@ export default function AssessmentResultsPage() {
 
   const summary = useMemo(() => {
     if (!assessment || rawTestRuns.length === 0) return null;
-    return generateExecutiveSummary(assessment.overallScore, rawTestRuns, assessment.domainScores);
+    
+    // Aggregate top issues
+    const issuesMap = new Map<string, { id: string; impact: string; count: number }>();
+    rawTestRuns.forEach(run => {
+      run.accessibilityIssues.forEach(issue => {
+        if (issuesMap.has(issue.id)) {
+          issuesMap.get(issue.id)!.count++;
+        } else {
+          issuesMap.set(issue.id, { id: issue.id, impact: issue.impact, count: 1 });
+        }
+      });
+    });
+    const topIssues = Array.from(issuesMap.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3);
+
+    const passedCount = rawTestRuns.filter(run => run.success).length;
+    return generateExecutiveSummary(
+      assessment.overallScore,
+      passedCount,
+      rawTestRuns.length,
+      topIssues
+    );
   }, [assessment, rawTestRuns]);
 
-  const domainScores = useMemo(() => {
-    if (!assessment) return [];
-    const data = assessment.domainScores || { accessibility: 0, biasRisk: 0, transparency: 0, equityData: 0 };
-    return [
-      { name: "Accessibility", score: data.accessibility, icon: ShieldCheck, color: "text-accent" },
-      { name: "Bias Risk", score: data.biasRisk, icon: AlertTriangle, color: "text-amber-500" },
-      { name: "Transparency", score: data.transparency, icon: Search, color: "text-emerald-500" },
-      { name: "Equity-Data", score: data.equityData, icon: Database, color: "text-blue-500" },
-    ];
-  }, [assessment]);
+  const handleTts = async () => {
+    if (!summary?.summaryText) return;
+    setTtsLoading(true);
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: summary.summaryText })
+      });
+      const data = await res.json();
+      if (data.media) setAudioUrl(data.media);
+    } catch (err) {
+      toast({ variant: "destructive", title: "Audio failed to generate." });
+    } finally {
+      setTtsLoading(false);
+    }
+  };
 
   const handleSendEmail = async () => {
     if (!user?.email || !assessment || !system || !summary) return;
@@ -101,7 +132,7 @@ export default function AssessmentResultsPage() {
           email: user.email,
           systemName: system.name,
           score: assessment.overallScore,
-          summary: summary.text,
+          summary: summary.summaryText,
           recommendation: summary.recommendation,
           version: assessment.version
         })
@@ -183,19 +214,53 @@ export default function AssessmentResultsPage() {
             <div className="p-10 md:p-14 space-y-14 flex-grow">
               <section className="grid grid-cols-1 lg:grid-cols-3 gap-14 border-b border-black/5 pb-14">
                 <div className="lg:col-span-2 space-y-8">
-                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground border-b border-black/10 pb-2">I. Executive Summary</h3>
-                  <div className="prose prose-lg max-w-none text-black">
-                    <p className="text-xl leading-relaxed font-semibold break-words">{summary?.text}</p>
+                  <div className="flex items-center justify-between border-b border-black/10 pb-2">
+                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">I. Executive Summary</h3>
+                    <Button variant="ghost" size="sm" onClick={handleTts} disabled={ttsLoading} className="h-8 text-[10px] font-black uppercase tracking-widest text-accent hover:bg-accent/10">
+                      {ttsLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <PlayCircle className="w-3 h-3 mr-1" />}
+                      Hear Summary
+                    </Button>
                   </div>
-                  <div className="bg-accent/5 border-l-4 border-accent p-8 rounded-r-2xl shadow-sm">
-                    <h4 className="text-[10px] font-black uppercase text-accent tracking-[0.2em] mb-3">Strategic Mandate</h4>
-                    <p className="text-lg italic font-extrabold text-black/90 leading-tight">{summary?.recommendation}</p>
+                  
+                  {audioUrl && (
+                    <div className="bg-muted p-2 rounded-lg mb-4">
+                      <audio controls className="w-full h-8" src={audioUrl}>
+                        Your browser does not support the audio element.
+                      </audio>
+                    </div>
+                  )}
+
+                  <div className="prose prose-lg max-w-none text-black">
+                    <p className="text-xl leading-relaxed font-semibold break-words">
+                      {summary?.summaryText}
+                    </p>
+                  </div>
+
+                  <div className={cn("border-l-4 p-8 rounded-r-2xl shadow-sm", 
+                    summary?.color === 'red' ? "bg-red-50 border-red-500" : 
+                    summary?.color === 'orange' ? "bg-orange-50 border-orange-500" : 
+                    summary?.color === 'yellow' ? "bg-yellow-50 border-yellow-500" : 
+                    "bg-green-50 border-green-500"
+                  )}>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] mb-3">Strategic Recommendation</h4>
+                    <p className="text-lg italic font-extrabold text-black/90 leading-tight">
+                      {summary?.recommendation}
+                    </p>
+                    <p className="mt-4 text-[10px] text-black/40 font-bold uppercase tracking-widest">
+                      * Automated testing catches 30-40% of issues. Manual audits required.
+                    </p>
                   </div>
                 </div>
+
                 <div className="bg-muted/30 p-8 rounded-2xl border border-black/5 flex flex-col gap-8 h-fit">
                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground border-b border-black/10 pb-2">Domain Performance</h4>
                    <div className="space-y-6">
-                     {domainScores.map(domain => (
+                     {[
+                       { name: "Accessibility", score: assessment?.domainScores?.accessibility ?? 0 },
+                       { name: "Bias Risk", score: assessment?.domainScores?.biasRisk ?? 0 },
+                       { name: "Transparency", score: assessment?.domainScores?.transparency ?? 0 },
+                       { name: "Equity-Data", score: assessment?.domainScores?.equityData ?? 0 },
+                     ].map(domain => (
                        <div key={domain.name} className="space-y-3">
                           <div className="flex justify-between items-center">
                              <span className="text-xs font-bold tracking-tight">{domain.name}</span>
@@ -210,25 +275,32 @@ export default function AssessmentResultsPage() {
 
               <section className="grid grid-cols-1 md:grid-cols-2 gap-14 border-b border-black/5 pb-14">
                 <div className="space-y-6">
-                   <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground border-b border-black/10 pb-2">II. Problem Definition</h3>
-                   <p className="text-lg leading-relaxed text-black/80 font-medium break-words">{summary?.problemStatement}</p>
-                   <div className="flex flex-wrap gap-2 mt-4">
-                      {rawTestRuns.filter(r => !r.success).map(r => (
-                        <Badge key={r.id} variant="outline" className="border-accent text-accent font-black text-[10px] py-1.5 px-3 uppercase tracking-wider">BLOCKAGE: {r.persona}</Badge>
-                      ))}
+                   <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground border-b border-black/10 pb-2">II. Problem Analysis</h3>
+                   <div className="bg-accent/5 p-6 rounded-2xl border border-accent/10">
+                     <p className="text-lg leading-relaxed text-black/80 font-medium">
+                       Functional pass rate of <span className="font-black text-accent">{kpis.overallPassRate}%</span> across disability personas identifies significant parity gaps.
+                     </p>
+                     <div className="flex flex-wrap gap-2 mt-4">
+                        {rawTestRuns.filter(r => !r.success).map(r => (
+                          <Badge key={r.id} variant="outline" className="border-accent text-accent font-black text-[10px] py-1 px-3 uppercase">BLOCKAGE: {r.persona}</Badge>
+                        ))}
+                     </div>
                    </div>
                 </div>
                 <div className="space-y-6">
-                   <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground border-b border-black/10 pb-2">III. Mitigation Strategy</h3>
-                   <p className="text-lg leading-relaxed text-black/80 font-medium break-words">{summary?.solutionStrategy}</p>
-                   <div className="mt-6 flex gap-4">
-                      <div className="flex-1 bg-emerald-500/5 p-5 rounded-2xl border border-emerald-500/10 shadow-sm">
-                         <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1">Functional Pass Rate</p>
-                         <p className="text-3xl font-black text-emerald-600">{kpis.overallPassRate}%</p>
+                   <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground border-b border-black/10 pb-2">III. Compliance Metrics</h3>
+                   <div className="grid grid-cols-3 gap-4">
+                      <div className="bg-black/5 p-4 rounded-xl text-center">
+                        <p className="text-[9px] font-black text-black/40 uppercase mb-1">WCAG A</p>
+                        <p className="text-2xl font-black">{kpis.totalA}</p>
                       </div>
-                      <div className="flex-1 bg-accent/5 p-5 rounded-2xl border border-accent/10 shadow-sm">
-                         <p className="text-[9px] font-black text-accent uppercase tracking-widest mb-1">Critical Failures</p>
-                         <p className="text-3xl font-black text-accent">{kpis.criticalCount}</p>
+                      <div className="bg-black/5 p-4 rounded-xl text-center">
+                        <p className="text-[9px] font-black text-black/40 uppercase mb-1">WCAG AA</p>
+                        <p className="text-2xl font-black">{kpis.totalAA}</p>
+                      </div>
+                      <div className="bg-black/5 p-4 rounded-xl text-center">
+                        <p className="text-[9px] font-black text-black/40 uppercase mb-1">Critical</p>
+                        <p className="text-2xl font-black text-red-600">{kpis.criticalCount}</p>
                       </div>
                    </div>
                 </div>
@@ -238,13 +310,13 @@ export default function AssessmentResultsPage() {
                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground border-b border-black/10 pb-2">IV. Persona Parity Analysis</h3>
                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
                     {rawTestRuns.map(run => (
-                      <div key={run.id} className={cn("p-5 rounded-2xl border text-center flex flex-col items-center gap-4 transition-all shadow-sm", run.success ? "bg-white border-black/10" : "bg-accent/5 border-accent/20")}>
-                         <div className={cn("p-2.5 rounded-full", run.success ? "bg-emerald-500/10 text-emerald-600" : "bg-accent/10 text-accent")}>
+                      <div key={run.id} className={cn("p-5 rounded-2xl border text-center flex flex-col items-center gap-4 transition-all shadow-sm", run.success ? "bg-white border-black/10" : "bg-red-50 border-red-100")}>
+                         <div className={cn("p-2.5 rounded-full", run.success ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-600")}>
                             {run.success ? <CheckCircle2 className="w-6 h-6" /> : <ShieldAlert className="w-6 h-6" />}
                          </div>
                          <div className="space-y-1">
-                           <p className="text-[10px] font-black uppercase leading-none tracking-tight break-words">{run.persona}</p>
-                           <p className={cn("text-[9px] font-bold uppercase tracking-widest", run.success ? "text-emerald-600" : "text-accent")}>{run.success ? "Compliant" : "At Risk"}</p>
+                           <p className="text-[10px] font-black uppercase leading-none tracking-tight">{run.persona}</p>
+                           <p className={cn("text-[9px] font-bold uppercase tracking-widest", run.success ? "text-emerald-600" : "text-red-600")}>{run.success ? "Compliant" : "At Risk"}</p>
                          </div>
                       </div>
                     ))}
