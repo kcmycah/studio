@@ -14,9 +14,11 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, MessageSquareWarning } from 'lucide-react';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface ReportIssueDialogProps {
   open: boolean;
@@ -30,34 +32,41 @@ export function ReportIssueDialog({ open, onOpenChange }: ReportIssueDialogProps
   const [issue, setIssue] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !db || !issue.trim()) return;
 
     setSubmitting(true);
-    try {
-      await addDoc(collection(db, 'feedback'), {
-        userId: user.uid,
-        email: user.email,
-        issue: issue.trim(),
-        createdAt: serverTimestamp(),
-      });
+    
+    const feedbackRef = doc(collection(db, 'feedback'));
+    const feedbackData = {
+      userId: user.uid,
+      email: user.email,
+      issue: issue.trim(),
+      createdAt: serverTimestamp(),
+    };
 
-      toast({
-        title: 'Feedback Received',
-        description: 'Thank you for helping us make DISA Audit more accessible.',
+    // Non-blocking mutation with contextual error handling
+    setDoc(feedbackRef, feedbackData)
+      .then(() => {
+        toast({
+          title: 'Feedback Received',
+          description: 'Thank you for helping us make DISA Audit more accessible.',
+        });
+        setIssue('');
+        onOpenChange(false);
+      })
+      .catch(async () => {
+        const permissionError = new FirestorePermissionError({
+          path: feedbackRef.path,
+          operation: 'create',
+          requestResourceData: feedbackData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      })
+      .finally(() => {
+        setSubmitting(false);
       });
-      setIssue('');
-      onOpenChange(false);
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Submission Failed',
-        description: 'Could not send feedback. Please try again later.',
-      });
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   return (

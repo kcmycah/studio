@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useFirestore, useUser } from "@/firebase";
-import { collection, query, where, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc, increment } from "firebase/firestore";
+import { collection, doc, setDoc, serverTimestamp, updateDoc, increment } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,7 +44,7 @@ export default function NewSystemPage() {
     checkLimit();
   }, [currentUser, db]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser || !db || !usage) return;
 
@@ -67,7 +67,7 @@ export default function NewSystemPage() {
     }
     
     setLoading(true);
-    const systemsRef = collection(db, "ai_systems");
+    const systemRef = doc(collection(db, "ai_systems"));
     const userRef = doc(db, "users", currentUser.uid);
     const docData = { 
       ...formData, 
@@ -75,25 +75,30 @@ export default function NewSystemPage() {
       createdAt: serverTimestamp() 
     };
 
-    try {
-      // 1. Create the system
-      await addDoc(systemsRef, docData);
-      
-      // 2. Increment monthly creation counter
-      await updateDoc(userRef, {
-        monthlySystemCreations: increment(1)
-      });
+    // Non-blocking mutations with contextual error handling
+    setDoc(systemRef, docData)
+      .then(() => {
+        // Also non-blocking usage update
+        const updateData = { monthlySystemCreations: increment(1) };
+        updateDoc(userRef, updateData).catch(async () => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: userRef.path,
+            operation: 'update',
+            requestResourceData: updateData,
+          }));
+        });
 
-      toast({ title: "System Registered", description: "System added to your inventory." });
-      router.push("/dashboard");
-    } catch (error: any) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: systemsRef.path,
-        operation: 'create',
-        requestResourceData: docData,
-      }));
-      setLoading(false);
-    }
+        toast({ title: "System Registered", description: "System added to your inventory." });
+        router.push("/dashboard");
+      })
+      .catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: systemRef.path,
+          operation: 'create',
+          requestResourceData: docData,
+        }));
+        setLoading(false);
+      });
   };
 
   if (checkingLimit) return (

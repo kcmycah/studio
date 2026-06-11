@@ -58,12 +58,13 @@ export default function EditSystemPage() {
     const systemRef = doc(db, "ai_systems", systemId as string);
     const updateData = { ...formData };
 
+    // Non-blocking mutation with contextual error handling
     updateDoc(systemRef, updateData)
       .then(() => {
         toast({ title: "System Updated", description: "Your changes have been saved." });
         router.push("/dashboard");
       })
-      .catch(async (error) => {
+      .catch(async () => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: systemRef.path,
           operation: 'update',
