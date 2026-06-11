@@ -126,26 +126,8 @@ export default function AssessmentResultsPage() {
     fetchData();
   }, [id, db, user, toast]);
 
-  const filteredRuns = useMemo(() => {
-    return rawTestRuns.filter(run => {
-      if (filters.onlyFailed && run.success) return false;
-      if (filters.personas.length > 0 && !filters.personas.includes(run.persona)) return false;
-      return true;
-    }).map(run => ({
-      ...run,
-      accessibilityIssues: run.accessibilityIssues.filter(issue => {
-        if (filters.severities.length > 0 && !filters.severities.includes(issue.impact)) return false;
-        if (filters.wcagLevels.length > 0 && issue.wcagLevel && !filters.wcagLevels.includes(issue.wcagLevel)) return false;
-        return true;
-      })
-    }));
-  }, [rawTestRuns, filters]);
-
-  const kpis = useMemo(() => computeKPIs(filteredRuns), [filteredRuns]);
-
   const topIssues = useMemo(() => {
     const issuesMap = new Map<string, { impact: string; count: number; description: string }>();
-    // Use raw runs for top issues to keep the summary consistent even when filtered
     rawTestRuns.forEach(run => {
       run.accessibilityIssues.forEach(issue => {
         const existing = issuesMap.get(issue.id);
@@ -163,6 +145,23 @@ export default function AssessmentResultsPage() {
     if (!assessment || rawTestRuns.length === 0) return null;
     return generateExecutiveSummary(assessment.overallScore, rawTestRuns, topIssues);
   }, [assessment, rawTestRuns, topIssues]);
+
+  const filteredRuns = useMemo(() => {
+    return rawTestRuns.filter(run => {
+      if (filters.onlyFailed && run.success) return false;
+      if (filters.personas.length > 0 && !filters.personas.includes(run.persona)) return false;
+      return true;
+    }).map(run => ({
+      ...run,
+      accessibilityIssues: run.accessibilityIssues.filter(issue => {
+        if (filters.severities.length > 0 && !filters.severities.includes(issue.impact)) return false;
+        if (filters.wcagLevels.length > 0 && issue.wcagLevel && !filters.wcagLevels.includes(issue.wcagLevel)) return false;
+        return true;
+      })
+    }));
+  }, [rawTestRuns, filters]);
+
+  const kpis = useMemo(() => computeKPIs(filteredRuns), [filteredRuns]);
 
   const scoreBreakdown = useMemo(() => {
     if (!assessment) return [];
@@ -223,7 +222,15 @@ export default function AssessmentResultsPage() {
   };
 
   const handleEmailReport = async () => {
-    if (!user || !assessment || !system || !summary) return;
+    if (!user || !assessment || !system || !summary) {
+      toast({
+        variant: "destructive",
+        title: "Report Not Ready",
+        description: "Please wait for the assessment data to fully load."
+      });
+      return;
+    }
+    
     setEmailLoading(true);
     try {
       const res = await fetch("/api/send-results", {
@@ -238,10 +245,23 @@ export default function AssessmentResultsPage() {
           version: assessment.version
         })
       });
-      if (!res.ok) throw new Error("Failed to send email");
-      toast({ title: "Report Sent", description: `Check your inbox at ${user.email}` });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to send email");
+      }
+      
+      toast({ 
+        title: "Report Sent", 
+        description: `The audit report has been sent to ${user.email}` 
+      });
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Email Error", description: err.message });
+      toast({ 
+        variant: "destructive", 
+        title: "Email Delivery Failed", 
+        description: err.message || "An unexpected error occurred." 
+      });
     } finally {
       setEmailLoading(false);
     }
@@ -305,7 +325,15 @@ export default function AssessmentResultsPage() {
       <div className="flex min-h-screen bg-background">
         <AppSidebar />
         <main className="flex-1 md:ml-[260px] p-8 max-w-7xl mx-auto w-full">
-          {audioUrl && <audio ref={audioRef} src={audioUrl} onEnded={() => setIsPlaying(false)} />}
+          {audioUrl && (
+            <audio 
+              ref={audioRef} 
+              src={audioUrl} 
+              onEnded={() => setIsPlaying(false)} 
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+            />
+          )}
 
           <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
             <div>
@@ -425,7 +453,7 @@ export default function AssessmentResultsPage() {
                       <span className="text-xl font-bold text-accent">{issue.count}</span>
                     </div>
                   ))}
-                  {topIssues.length === 0 && <p className="text-sm text-muted-foreground italic">No issues filtered.</p>}
+                  {topIssues.length === 0 && <p className="text-sm text-muted-foreground italic">No issues detected.</p>}
                 </CardContent>
               </Card>
               
