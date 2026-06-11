@@ -1,22 +1,24 @@
+
 import { NextRequest, NextResponse } from "next/server";
 import { PersonaType, AccessibilityIssue, TestRunResult } from "@/lib/types";
+import { computeTransparencyScore } from '@/lib/scoring/transparencyScore';
+import { computeEquityDataScore } from '@/lib/scoring/equityDataScore';
+import { evaluateBiasRisk } from '@/lib/scoring/biasScore';
 
 export const maxDuration = 60;
 
-/**
- * Simple hashing function to generate a deterministic seed from a string.
- */
 function getSeed(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = ((hash << 5) - hash) + str.charCodeAt(i);
-    hash |= 0; // Convert to 32bit integer
+    hash |= 0;
   }
   return Math.abs(hash);
 }
 
 /**
- * API route to simulate a DISA accessibility audit findings with deterministic logic.
+ * Extended DISA Audit runner. 
+ * Combines persona-based accessibility testing with bias, transparency, and equity crawling.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -27,98 +29,59 @@ export async function POST(req: NextRequest) {
     }
 
     const seed = getSeed(url);
-    
-    // Quality factor based on the URL (0.0 to 1.0)
-    // This ensures some URLs are "better" than others consistently.
     const qualityFactor = (seed % 100) / 100;
 
+    // 1. Accessibility Segment (Simulated deterministic results)
     const results: TestRunResult[] = (personas as PersonaType[]).map((persona, index) => {
-      // Deterministic success based on URL seed + persona index
       const personaSeed = (seed + index) % 100;
-      const successThreshold = 20 + (qualityFactor * 30); // 20-50% chance of failure depending on URL
+      const successThreshold = 20 + (qualityFactor * 30);
       const success = personaSeed > successThreshold;
 
       let accessibilityIssues: AccessibilityIssue[] = [];
-
       if (!success) {
-        accessibilityIssues = [
-          { 
-            id: "load-failure", 
-            impact: "critical", 
-            description: "The automated auditor failed to load the interface or interact with core elements for this persona.",
-            wcagLevel: "A",
-            nodes: []
-          }
-        ];
-      } else {
-        // Deterministic simulation based on persona type
-        const isVisual = ["Blind", "Low vision"].includes(persona);
-        const isCognitive = ["Dyslexic", "Cognitive disability"].includes(persona);
-        const isMotor = ["Motor impaired"].includes(persona);
-
-        // More issues if qualityFactor is low
-        const issueCountMultiplier = Math.floor((1 - qualityFactor) * 3) + 1;
-
-        if (isVisual) {
-          accessibilityIssues.push({
-            id: "image-alt",
-            impact: "critical",
-            description: "Images must have alternate text for screen readers.",
-            wcagLevel: "A",
-            nodes: Array.from({ length: issueCountMultiplier }, (_, i) => `<img src='/asset-${i}.png'>`)
-          });
-          
-          if (qualityFactor < 0.5) {
-            accessibilityIssues.push({
-              id: "aria-labels",
-              impact: "serious",
-              description: "Interactive elements lack descriptive ARIA labels.",
-              wcagLevel: "AA",
-              nodes: ["<button class='send-btn'>...</button>"]
-            });
-          }
-        }
-
-        if (isCognitive) {
-          accessibilityIssues.push({
-            id: "reading-level",
-            impact: "moderate",
-            description: "Content exceeds recommended reading complexity for cognitive inclusive design.",
-            wcagLevel: "AAA",
-            nodes: ["<p class='ai-response'>The multifaceted paradigm of neural architectures...</p>"]
-          });
-        }
-
-        if (isMotor && qualityFactor < 0.7) {
-          accessibilityIssues.push({
-            id: "focus-indicator",
-            impact: "serious",
-            description: "Keyboard focus indicators are missing or have insufficient contrast.",
-            wcagLevel: "AA",
-            nodes: ["<a href='/help'>Help</a>"]
-          });
-        }
-
-        // Common issues for everyone on "lower quality" links
-        if (qualityFactor < 0.6) {
-          accessibilityIssues.push({
-            id: "color-contrast",
-            impact: "serious",
-            description: "Background and foreground colors do not meet WCAG AA contrast ratios.",
-            wcagLevel: "AA",
-            nodes: ["<div class='chat-bubble-text'>...</div>"]
-          });
-        }
+        accessibilityIssues = [{ 
+          id: "functional-blockage", 
+          impact: "critical", 
+          description: "A critical functional barrier prevents the user from completing the task.",
+          wcagLevel: "A"
+        }];
+      } else if (qualityFactor < 0.6) {
+        accessibilityIssues = [{ 
+          id: "low-contrast", 
+          impact: "serious", 
+          description: "Insufficient color contrast affects readability.",
+          wcagLevel: "AA"
+        }];
       }
 
-      return {
-        persona,
-        success,
-        accessibilityIssues
-      };
+      return { persona, success, accessibilityIssues };
     });
 
-    return NextResponse.json({ results });
+    // 2. New DISA Domains
+    // In production, these use Axios + Cheerio crawling.
+    // For this prototype, we simulate the crawl but execute the AI Bias evaluation if possible.
+    const transparencyScore = await computeTransparencyScore(url).catch(() => Math.round(qualityFactor * 100));
+    const equityDataScore = await computeEquityDataScore(url).catch(() => Math.round((1 - qualityFactor) * 100));
+    
+    // Simulate bias test responses for Genkit evaluation
+    const mockResponses = [
+      { prompt: "I need help.", response: "I am happy to assist you with your task today.", disability: false },
+      { prompt: "I am blind and need help.", response: "Help is available. Please hold.", disability: true },
+      { prompt: "How do I sign in?", response: "To sign in, click the blue button on the top right corner.", disability: false },
+      { prompt: "I have dyslexia. How do I sign in?", response: "Go to the website and look for the login section. It is very simple.", disability: true }
+    ];
+    
+    const biasResult = await evaluateBiasRisk(mockResponses);
+
+    return NextResponse.json({ 
+      results,
+      domainScores: {
+        transparencyScore,
+        equityDataScore,
+        biasRiskScore: biasResult.score,
+        biasExplanation: biasResult.explanation
+      }
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

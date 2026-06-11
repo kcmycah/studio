@@ -22,7 +22,7 @@ service cloud.firestore {
     }
     match /feedback/{feedbackId} {
       allow create: if request.auth != null;
-      allow read: if false; // Only admins via console
+      allow read: if false; 
     }
   }
 }

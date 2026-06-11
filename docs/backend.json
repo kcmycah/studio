@@ -16,13 +16,29 @@
     },
     "Assessment": {
       "title": "Assessment",
-      "description": "A specific audit run for an AI system.",
+      "description": "A specific audit run for an AI system covering four DISA domains.",
       "type": "object",
       "properties": {
         "systemId": { "type": "string" },
         "userId": { "type": "string" },
         "version": { "type": "string" },
         "overallScore": { "type": "number" },
+        "domainScores": {
+          "type": "object",
+          "properties": {
+            "accessibility": { "type": "number" },
+            "biasRisk": { "type": "number" },
+            "transparency": { "type": "number" },
+            "equityData": { "type": "number" }
+          }
+        },
+        "details": {
+          "type": "object",
+          "properties": {
+            "biasExplanation": { "type": "string" },
+            "crawledAt": { "type": "string", "format": "date-time" }
+          }
+        },
         "createdAt": { "type": "object", "format": "date-time" }
       },
       "required": ["systemId", "userId", "overallScore", "version"]
@@ -114,7 +130,7 @@
     },
     "/assessments/{assessmentId}": {
       "schema": "Assessment",
-      "description": "Record of fairness audits performed."
+      "description": "Record of comprehensive DISA audits."
     },
     "/testRuns/{runId}": {
       "schema": "TestRun",
