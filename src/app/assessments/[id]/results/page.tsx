@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -22,7 +21,8 @@ import {
   ShieldAlert,
   Briefcase,
   ExternalLink,
-  Volume2
+  Volume2,
+  Printer
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -66,6 +66,7 @@ export default function AssessmentResultsPage() {
         const systemSnap = await getDoc(doc(db, "ai_systems", assessmentData.systemId));
         if (systemSnap.exists()) setSystem({ id: systemSnap.id, ...systemSnap.data() } as AISystem);
 
+        // Security requirement: Filter queries by userId
         const q = query(
           collection(db, "testRuns"), 
           where("assessmentId", "==", id as string),
@@ -226,9 +227,12 @@ export default function AssessmentResultsPage() {
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={handleExportCSV} disabled={exportingCsv} className="font-bold">
                 {exportingCsv ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileSpreadsheet className="w-4 h-4 mr-2" />}
-                CSV Audit Log
+                CSV Log
               </Button>
-              <Button variant="outline" onClick={() => window.print()} className="font-bold"><Download className="w-4 h-4 mr-2" />Print Briefing</Button>
+              <Button variant="outline" onClick={() => window.print()} className="font-bold">
+                <Printer className="w-4 h-4 mr-2" />
+                Export PDF
+              </Button>
               <Button className="bg-accent text-white hover:bg-accent/90 font-bold" disabled={sendingEmail} onClick={handleSendEmail}>
                 {sendingEmail ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
                 Email Report
@@ -236,7 +240,7 @@ export default function AssessmentResultsPage() {
             </div>
           </div>
 
-          <Card className="shadow-2xl border-2 border-border overflow-hidden print:shadow-none print:border-none bg-white text-black min-h-[1100px] flex flex-col">
+          <Card className="shadow-2xl border-2 border-border overflow-hidden print:shadow-none print:border-none bg-white text-black min-h-[1100px] flex flex-col transition-all">
             <header className="bg-black text-white p-10 md:p-14 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
               <div className="space-y-3 max-w-full">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Compliance Disclosure</p>
@@ -370,7 +374,7 @@ export default function AssessmentResultsPage() {
                  </div>
               </section>
 
-              <section className="space-y-8">
+              <section className="space-y-8 print:hidden">
                 <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground border-b border-black/10 pb-2">V. Framework Pillars & Risk Factors</h3>
                 <Accordion type="single" collapsible className="w-full">
                   {[

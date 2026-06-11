@@ -69,32 +69,85 @@
 }
 
 @media print {
-  .print\:hidden {
+  /* Hide UI elements */
+  .print\:hidden,
+  aside,
+  nav,
+  button,
+  .toaster {
     display: none !important;
   }
   
+  /* Reset body and layout for print */
   body {
     background: white !important;
     color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   main {
     margin: 0 !important;
     padding: 0 !important;
     max-width: 100% !important;
+    width: 100% !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
   }
 
-  .print\:p-0 {
-    padding: 0 !important;
-  }
-
+  /* Optimize Card for full-page PDF */
   .card {
-    border: 1px solid #000 !important;
+    border: none !important;
     box-shadow: none !important;
+    width: 100% !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
   }
 
-  .prose, p {
+  /* Force headers to maintain their colors */
+  header {
+    background-color: black !important;
+    color: white !important;
+  }
+
+  /* Ensure text is black and readable */
+  .prose, p, span, h1, h2, h3, h4, h5, h6 {
     color: black !important;
+  }
+
+  header h2, header p, header span {
+    color: white !important;
+  }
+
+  /* Ensure domain performance bars show up */
+  .bg-black\/5 {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+  }
+  
+  .bg-accent\/5 {
+    background-color: rgba(94, 106, 210, 0.05) !important;
+  }
+
+  .bg-emerald-500\/10 {
+    background-color: rgba(16, 185, 129, 0.1) !important;
+  }
+
+  .text-emerald-500, .text-emerald-600 {
+    color: #059669 !important;
+  }
+
+  .text-accent {
+    color: #5e6ad2 !important;
+  }
+
+  /* Break points for clean PDF pages */
+  section {
+    page-break-inside: avoid;
   }
 }
 
