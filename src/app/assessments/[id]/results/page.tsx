@@ -23,7 +23,7 @@ import {
   Briefcase,
   PlayCircle,
   ExternalLink,
-  Info
+  Volume2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -50,8 +50,7 @@ export default function AssessmentResultsPage() {
   const [loading, setLoading] = useState(true);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [exportingCsv, setExportingCsv] = useState(false);
-  const [ttsLoading, setTtsLoading] = useState(false);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   useEffect(() => {
     if (!id || !db || !user) return;
@@ -70,8 +69,7 @@ export default function AssessmentResultsPage() {
 
         const q = query(
           collection(db, "testRuns"), 
-          where("assessmentId", "==", id),
-          where("userId", "==", user.uid)
+          where("assessmentId", "==", id)
         );
         const runsSnap = await getDocs(q);
         const runs = runsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as TestRun));
@@ -113,26 +111,33 @@ export default function AssessmentResultsPage() {
     );
   }, [assessment, rawTestRuns]);
 
-  const handleTts = async () => {
-    if (!summary?.summaryText) return;
-    setTtsLoading(true);
-    try {
-      const res = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: summary.summaryText })
-      });
-      const data = await res.json();
-      if (data.media) setAudioUrl(data.media);
-    } catch (err) {
-      toast({ variant: "destructive", title: "Audio generation failed." });
-    } finally {
-      setTtsLoading(false);
+  const handleSpeak = () => {
+    if (typeof window === 'undefined' || !window.speechSynthesis || !summary?.summaryText) {
+      toast({ variant: "destructive", title: "Speech Synthesis Unsupported", description: "Your browser does not support text-to-speech." });
+      return;
     }
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(summary.summaryText);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    
+    setIsSpeaking(true);
+    window.speechSynthesis.cancel(); // Stop any ongoing speech
+    window.speechSynthesis.speak(utterance);
   };
 
   const handleSendEmail = async () => {
-    if (!user?.email || !id) return;
+    if (!user?.email) {
+      toast({ variant: "destructive", title: "Verification Required", description: "You need a verified email address to receive reports." });
+      return;
+    }
+    
     setSendingEmail(true);
     try {
       const res = await fetch("/api/send-email", {
@@ -167,7 +172,7 @@ export default function AssessmentResultsPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `DISA-Executive-Log-${system?.name || 'report'}.csv`;
+      link.download = `DISA-Executive-Log-${system?.name.replace(/\s+/g, '-') || 'Report'}.csv`;
       link.click();
       URL.revokeObjectURL(url);
       toast({ title: "CSV Downloaded", description: "Your detailed audit log has been saved." });
@@ -231,20 +236,12 @@ export default function AssessmentResultsPage() {
                 <div className="lg:col-span-2 space-y-8">
                   <div className="flex items-center justify-between border-b border-black/10 pb-2">
                     <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">I. Executive Summary</h3>
-                    <Button variant="ghost" size="sm" onClick={handleTts} disabled={ttsLoading} className="h-8 text-[10px] font-black uppercase tracking-widest text-accent hover:bg-accent/10 print:hidden">
-                      {ttsLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <PlayCircle className="w-3 h-3 mr-1" />}
-                      Hear Summary
+                    <Button variant="ghost" size="sm" onClick={handleSpeak} className="h-8 text-[10px] font-black uppercase tracking-widest text-accent hover:bg-accent/10 print:hidden">
+                      {isSpeaking ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Volume2 className="w-3 h-3 mr-1" />}
+                      {isSpeaking ? "Stop" : "Hear Summary"}
                     </Button>
                   </div>
                   
-                  {audioUrl && (
-                    <div className="bg-muted p-2 rounded-lg mb-4 print:hidden">
-                      <audio controls className="w-full h-8" src={audioUrl}>
-                        Your browser does not support the audio element.
-                      </audio>
-                    </div>
-                  )}
-
                   <div className="prose prose-lg max-w-none text-black">
                     <p className="text-xl leading-relaxed font-semibold break-words">
                       {summary?.summaryText}
@@ -262,7 +259,7 @@ export default function AssessmentResultsPage() {
                       {summary?.recommendation}
                     </p>
                     <p className="mt-4 text-[10px] text-black/40 font-bold uppercase tracking-widest">
-                      * DISA framework assessment incorporates both technical code markers and functional persona success rates.
+                      * Automated testing captures only 30‑40% of accessibility issues. Manual testing with real users is mandatory for full functional equity.
                     </p>
                   </div>
                 </div>
@@ -290,7 +287,7 @@ export default function AssessmentResultsPage() {
 
               <section className="grid grid-cols-1 md:grid-cols-2 gap-14 border-b border-black/5 pb-14">
                 <div className="space-y-6">
-                   <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground border-b border-black/10 pb-2">II. Problem Analysis</h3>
+                   <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground border-b border-black/10 pb-2">II. Functional Barrier Analysis</h3>
                    <div className="bg-accent/5 p-6 rounded-2xl border border-accent/10">
                      <p className="text-lg leading-relaxed text-black/80 font-medium">
                        Observed a functional pass rate of <span className="font-black text-accent">{kpis.overallPassRate}%</span>. Personas facing significant barriers include:

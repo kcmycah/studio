@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   try {
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'Resend API key missing' }, { status: 500 });
+      return NextResponse.json({ error: 'Resend API key missing. Please add RESEND_API_KEY to your environment.' }, { status: 500 });
     }
 
     const { assessmentId, recipientEmail } = await req.json();
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     const summary = generateExecutiveSummary(assessment.overallScore, passedCount, testRuns.length, topIssues);
 
     const htmlContent = `
-      <div style="font-family: sans-serif; max-width: 600px; margin: auto; color: #111; border: 1px solid #eee; border-radius: 8px; overflow: hidden;">
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; color: #111; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background-color: #fff;">
         <div style="background-color: #000; color: #fff; padding: 40px;">
           <h1 style="margin: 0; font-size: 24px; font-weight: 900;">Executive Briefing: ${system.name}</h1>
           <p style="margin: 5px 0 0; opacity: 0.7; font-size: 14px;">Version ${assessment.version} • DISA Framework v2.4</p>
@@ -99,12 +99,11 @@ export async function POST(req: NextRequest) {
             </tbody>
           </table>
 
-          <p style="font-size: 11px; color: #999; text-align: center;">
-            * Automated testing provides a baseline for accessibility compliance. Manual audits remain mandatory for full functional equity.
-          </p>
-          
-          <div style="text-align: center; margin-top: 40px;">
-            <a href="${process.env.NEXT_PUBLIC_APP_URL}/assessments/${assessmentId}/results" style="background-color: #5e6ad2; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 700; font-size: 14px;">View Full Report</a>
+          <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee;">
+             <p style="font-size: 11px; color: #999; margin-bottom: 20px;">
+               * Automated testing captures only 30‑40% of accessibility issues. Manual testing with real users is mandatory for full functional equity.
+             </p>
+            <a href="${process.env.NEXT_PUBLIC_APP_URL}/assessments/${assessmentId}/results" style="background-color: #5e6ad2; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 700; font-size: 14px; display: inline-block;">View Full Interactive Report</a>
           </div>
         </div>
       </div>

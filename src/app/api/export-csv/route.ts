@@ -49,7 +49,8 @@ export async function POST(req: NextRequest) {
       'Persona Conclusion',
       'Violation ID', 
       'Impact', 
-      'Description'
+      'Description',
+      'Affected Nodes'
     ]);
 
     const baseData = [
@@ -72,7 +73,8 @@ export async function POST(req: NextRequest) {
             ...personaBaseData,
             issue.id || 'N/A',
             (issue.impact || 'N/A').toUpperCase(),
-            issue.description || 'N/A'
+            issue.description || 'N/A',
+            (issue.nodes || []).join('; ')
           ]);
         }
       } else {
@@ -80,7 +82,8 @@ export async function POST(req: NextRequest) {
           ...personaBaseData,
           'N/A',
           'N/A',
-          'No significant functional barriers detected.'
+          'No significant functional barriers detected.',
+          'N/A'
         ]);
       }
     }
@@ -90,7 +93,7 @@ export async function POST(req: NextRequest) {
     return new NextResponse(csv, {
       headers: {
         'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename=DISA-Report-${systemName}.csv`
+        'Content-Disposition': `attachment; filename=DISA-Detailed-Log-${systemName.replace(/\s+/g, '-')}.csv`
       }
     });
   } catch (error: any) {
