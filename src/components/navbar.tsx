@@ -12,7 +12,9 @@ import {
   PlusSquare, 
   ClipboardList, 
   LogOut,
-  Info
+  Info,
+  Settings,
+  CreditCard
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -42,8 +44,8 @@ export const Navbar = () => {
 
   const navItems = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Add System", href: "/systems/new", icon: PlusSquare },
     { label: "History", href: "/history", icon: ClipboardList },
+    { label: "Pricing", href: "/billing", icon: CreditCard },
     { label: "How it Works", href: "/how-it-works", icon: Info },
   ];
 
@@ -71,7 +73,12 @@ export const Navbar = () => {
           ))}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" asChild className="text-muted-foreground hover:text-primary">
+            <Link href="/settings">
+              <Settings className="w-5 h-5" />
+            </Link>
+          </Button>
           <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
             <LogOut className="w-4 h-4 mr-2" />
             Logout
