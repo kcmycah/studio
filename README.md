@@ -5,24 +5,22 @@ This application audits AI systems for accessibility and fairness using automate
 
 ## Troubleshooting Connection Issues
 
-If you encounter a **"Network Request Failed"** error when signing in or resetting your password:
+### 1. Authentication Errors (Network Request Failed)
+If you encounter a **"Network Request Failed"** error when signing in:
+- **Disable Ad-blockers**: Extensions like **uBlock Origin** or **AdGuard** often block Firebase Auth. Turn them off for this site.
+- **Authorized Domains**: Ensure your workstation URL is added in **Firebase Console > Authentication > Settings > Authorized Domains**.
 
-1.  **Disable Ad-blockers**: Extensions like **uBlock Origin**, **AdBlock**, or **AdGuard** can block Firebase's authentication requests. 
-    - Click the extension icon in your browser toolbar.
-    - Click the "Power" icon or toggle switch to disable it for this site.
-    - Refresh the page and try again.
-2.  **Authorized Domains**: Ensure your current URL (e.g., `*.cloudworkstations.dev`) is added to the "Authorized Domains" list in the Firebase Console:
-    - Go to **Authentication** > **Settings** > **Authorized Domains**.
-    - Click **Add Domain** and enter your current site's root domain.
-
-## Setup
-
-1.  **Firebase Project**: Ensure you have a project at [Firebase Console](https://console.firebase.google.com/).
-2.  **Environment Variables**: Fill out the `.env` file with your configuration from **Project Settings**.
-3.  **Enable Auth**: Go to **Authentication** > **Sign-in method** and enable **Email/Password**.
+### 2. AI Access Forbidden (403 Error)
+If "Generate AI Insights" says access is forbidden:
+1. **Enable the API**: Go to the [Google Cloud API Library](https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com) and ensure **Generative Language API** is "Enabled".
+2. **Check Key Restrictions**:
+   - Go to [APIs & Services > Credentials](https://console.cloud.google.com/apis/credentials).
+   - Click on your API Key.
+   - Look at **API restrictions**.
+   - If "Restrict key" is on, ensure **Generative Language API** is checked.
+   - If you just enabled the API, wait 5 minutes for Google's servers to sync.
 
 ## Features
-
 - **Inclusive Audits**: Run scans across multiple disability personas.
 - **DISA Scoring**: Automatically calculate compliance scores.
-- **AI Insights**: Generate executive summaries and impact explanations using Genkit.
+- **AI Insights**: Generate executive summaries using Genkit and Gemini 1.5 Flash.
