@@ -29,7 +29,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { UserProfile } from "@/lib/types";
 import { ReportIssueDialog } from "./report-issue-dialog";
-import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from "./ui/sheet";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -169,6 +169,12 @@ export function AppSidebar() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0 w-[280px]">
+            <div className="sr-only">
+              <SheetHeader>
+                <SheetTitle>Navigation Menu</SheetTitle>
+                <SheetDescription>Main navigation links for the DISA Audit workspace.</SheetDescription>
+              </SheetHeader>
+            </div>
             <SidebarContent />
           </SheetContent>
         </Sheet>
