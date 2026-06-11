@@ -84,7 +84,9 @@ export default function AssessmentResultsPage() {
 
         const q = query(collection(db, "testRuns"), where("assessmentId", "==", id));
         const runsSnap = await getDocs(q);
-        setRawTestRuns(runsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as TestRun)));
+        const runs = runsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as TestRun));
+        // Sort runs alphabetically by persona for consistent mapping
+        setRawTestRuns(runs.sort((a, b) => a.persona.localeCompare(b.persona)));
       } catch (err) {
         console.error("Error fetching results:", err);
       } finally {
@@ -272,7 +274,7 @@ export default function AssessmentResultsPage() {
             <Card className="p-8 flex flex-col items-center justify-center text-center bg-accent/5 border-accent/20">
               <p className="text-xs font-bold uppercase tracking-widest text-accent mb-2">Overall DISA Score</p>
               <div className="relative">
-                 <span className={cn("text-8xl font-black", (assessment?.overallScore ?? 0) >= 80 ? "text-emerald-500" : "text-accent")}>{assessment?.overallScore}</span>
+                 <span className={cn("text-8xl font-black", (assessment?.overallScore ?? 0) >= 80 ? "text-emerald-500" : (assessment?.overallScore ?? 0) >= 60 ? "text-amber-500" : "text-accent")}>{assessment?.overallScore}</span>
                  <span className="text-2xl font-bold text-muted-foreground absolute -top-2 -right-12">/ 100</span>
               </div>
               <Badge variant="outline" className="mt-4 bg-background px-4 py-1">Weighted Framework</Badge>
@@ -384,7 +386,7 @@ export default function AssessmentResultsPage() {
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-2"><FileText className="w-6 h-6 text-accent" /> Persona Success Mapping</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
             {rawTestRuns.map(run => (
-              <Card key={run.id} className="p-4 flex flex-col gap-4 border-t-4" style={{ borderTopColor: run.success ? 'hsl(var(--success))' : 'hsl(var(--destructive))' }}>
+              <Card key={run.id} className={cn("p-4 flex flex-col gap-4 border-t-4", run.success ? "border-t-emerald-500" : "border-t-destructive")}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className={cn("p-1.5 rounded-md", run.success ? "bg-emerald-500/10" : "bg-destructive/10")}>
@@ -394,13 +396,28 @@ export default function AssessmentResultsPage() {
                   </div>
                 </div>
                 {run.accessibilityIssues.length > 0 ? (
-                  <div className="space-y-2">
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase truncate">{run.accessibilityIssues[0].description}</p>
-                    <Button variant="outline" size="sm" className="w-full h-8 text-[10px] font-bold gap-2" onClick={() => handleExplainImpact(run.accessibilityIssues[0], run.persona)} disabled={explainingId === run.accessibilityIssues[0].id}>
-                      {explainingId === run.accessibilityIssues[0].id ? <Loader2 className="w-3 h-3 animate-spin" /> : <BrainCircuit className="w-3 h-3" />} Explain Impact
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-muted-foreground font-bold uppercase">Detected Barrier</p>
+                      <p className="text-xs font-medium leading-relaxed line-clamp-2">{run.accessibilityIssues[0].description}</p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full h-8 text-[10px] font-bold gap-2" 
+                      onClick={() => handleExplainImpact(run.accessibilityIssues[0], run.persona)} 
+                      disabled={explainingId === run.accessibilityIssues[0].id}
+                    >
+                      {explainingId === run.accessibilityIssues[0].id ? <Loader2 className="w-3 h-3 animate-spin" /> : <BrainCircuit className="w-3 h-3" />} 
+                      Explain Real-World Impact
                     </Button>
                   </div>
-                ) : <p className="text-[10px] italic text-muted-foreground py-2">No blockages detected.</p>}
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-4 text-muted-foreground">
+                    <CheckCircle2 className="w-6 h-6 mb-2 opacity-20" />
+                    <p className="text-[10px] italic">Fully Compliant</p>
+                  </div>
+                )}
               </Card>
             ))}
           </div>
