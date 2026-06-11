@@ -37,20 +37,22 @@ export function AppSidebar() {
 
   const navItems = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { label: "History", href: "/history", icon: History },
-    { label: "Add System", href: "/systems/new", icon: PlusSquare },
+    { label: "Audit History", href: "/history", icon: History },
+    { label: "Register System", href: "/systems/new", icon: PlusSquare },
     { label: "New Assessment", href: "/assessments/new", icon: Plus },
-    { label: "Billing", href: "/billing", icon: CreditCard },
-    { label: "How it Works", href: "/how-it-works", icon: Info },
+    { label: "Billing & Plans", href: "/billing", icon: CreditCard },
+    { label: "Framework", href: "/how-it-works", icon: Info },
     { label: "Settings", href: "/settings", icon: Settings },
   ];
 
   return (
     <aside className="fixed left-0 top-0 hidden h-full w-[260px] flex-col border-r bg-card md:flex shadow-sm z-50">
       <div className="flex h-16 items-center px-6 border-b">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <ShieldCheck className="w-6 h-6 text-accent" />
-          <span className="text-lg font-bold tracking-tight">DISA Audit</span>
+        <Link href="/dashboard" className="flex items-center gap-2.5">
+          <div className="bg-accent p-1.5 rounded-lg">
+            <ShieldCheck className="w-5 h-5 text-white" />
+          </div>
+          <span className="text-lg font-black tracking-tight">DISA Audit</span>
         </Link>
       </div>
       
@@ -62,10 +64,10 @@ export function AppSidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all group",
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all group",
                 isActive 
                   ? "bg-accent/10 text-accent border-l-4 border-accent" 
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               )}
             >
               <item.icon className={cn("w-4 h-4", isActive ? "text-accent" : "text-muted-foreground group-hover:text-foreground")} />
@@ -75,10 +77,16 @@ export function AppSidebar() {
         })}
       </nav>
 
-      <div className="p-4 border-t">
+      <div className="p-4 border-t bg-muted/10">
+        <div className="bg-accent/5 rounded-xl p-4 mb-4 border border-accent/10">
+          <p className="text-[10px] font-bold text-accent uppercase tracking-widest mb-1">PRO TIP</p>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            Automate your compliance with Scheduled Monitoring.
+          </p>
+        </div>
         <Button 
           variant="ghost" 
-          className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 font-bold"
           onClick={handleLogout}
         >
           <LogOut className="w-4 h-4 mr-3" />

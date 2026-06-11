@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useFirestore, useUser } from "@/firebase";
-import { collection, query, where, getDocs, orderBy, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { AISystem, Assessment } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,34 +38,34 @@ function HistoryContent() {
     const fetchData = async () => {
       setLoading(true);
       try {
+        // Fetch all assessments for user
         let q = query(
           collection(db, "assessments"), 
-          where("userId", "==", user.uid),
-          orderBy("createdAt", "desc")
+          where("userId", "==", user.uid)
         );
-
-        if (systemIdFilter) {
-          q = query(
-            collection(db, "assessments"),
-            where("userId", "==", user.uid),
-            where("systemId", "==", systemIdFilter),
-            orderBy("createdAt", "desc")
-          );
-        }
-
         const snap = await getDocs(q);
         
-        const results = await Promise.all(snap.docs.map(async d => {
-          const data = d.data() as Assessment;
-          const systemSnap = await getDoc(doc(db, "ai_systems", data.systemId));
-          return {
-            id: d.id,
-            ...data,
-            systemName: systemSnap.exists() ? (systemSnap.data() as AISystem).name : "Unknown System"
-          };
-        }));
+        // Fetch all systems for user to map names
+        const systemsSnap = await getDocs(query(collection(db, "ai_systems"), where("userId", "==", user.uid)));
+        const systemsMap = new Map(systemsSnap.docs.map(d => [d.id, (d.data() as AISystem).name]));
+
+        const results = snap.docs
+          .map(d => {
+            const data = d.data() as Assessment;
+            return {
+              id: d.id,
+              ...data,
+              systemName: systemsMap.get(data.systemId) || "Unknown System"
+            };
+          })
+          .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+
+        // Apply system-specific filter if present in URL
+        const filteredResults = systemIdFilter 
+          ? results.filter(a => a.systemId === systemIdFilter)
+          : results;
         
-        setAssessments(results);
+        setAssessments(filteredResults);
       } catch (err) {
         console.error("Error fetching history:", err);
       } finally {
@@ -92,14 +92,14 @@ function HistoryContent() {
               </p>
             </div>
             {systemIdFilter && (
-              <Button variant="ghost" asChild>
+              <Button variant="ghost" asChild className="font-bold">
                 <Link href="/history">Clear Filter</Link>
               </Button>
             )}
           </div>
         </header>
 
-        <Card className="glass-morphism mb-8">
+        <Card className="shadow-sm mb-8">
           <CardContent className="p-4 flex flex-col md:flex-row gap-4 items-center">
             <div className="relative flex-grow w-full">
               <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
@@ -110,44 +110,40 @@ function HistoryContent() {
                 onChange={e => setFilter(e.target.value)}
               />
             </div>
-            <Button variant="outline" className="h-11">
-              <Calendar className="w-4 h-4 mr-2" />
-              Date Range
-            </Button>
           </CardContent>
         </Card>
 
-        <Card className="glass-morphism overflow-hidden">
+        <Card className="shadow-sm overflow-hidden">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
               <Loader2 className="w-8 h-8 animate-spin mb-4 text-accent" />
-              <p>Loading history...</p>
+              <p className="text-sm font-medium">Loading history records...</p>
             </div>
           ) : (
             <Table>
-              <TableHeader className="bg-muted/50">
+              <TableHeader className="bg-muted/30">
                 <TableRow>
-                  <TableHead>AI System</TableHead>
-                  <TableHead>Date Conducted</TableHead>
-                  <TableHead>Overall Score</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="font-bold">AI System</TableHead>
+                  <TableHead className="font-bold">Date</TableHead>
+                  <TableHead className="font-bold">DISA Score</TableHead>
+                  <TableHead className="font-bold">Status</TableHead>
+                  <TableHead className="text-right font-bold">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((item) => (
                   <TableRow key={item.id} className="hover:bg-accent/5 transition-colors">
-                    <TableCell className="font-medium">
+                    <TableCell className="font-bold">
                       <div className="flex items-center gap-2">
                         <Layers className="w-4 h-4 text-accent" />
                         {item.systemName}
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-muted-foreground text-xs font-medium">
                       {item.createdAt.toDate().toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                       <span className={cn("text-xl font-bold", 
+                       <span className={cn("text-2xl font-black", 
                          item.overallScore >= 80 ? "text-emerald-500" : 
                          item.overallScore >= 60 ? "text-amber-500" : 
                          "text-destructive"
@@ -156,15 +152,15 @@ function HistoryContent() {
                        </span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={item.overallScore >= 60 ? "secondary" : "outline"} className={cn(item.overallScore < 60 && "border-destructive text-destructive")}>
+                      <Badge variant={item.overallScore >= 60 ? "secondary" : "outline"} className={cn("text-[10px] font-bold uppercase", item.overallScore < 60 && "border-destructive text-destructive")}>
                         {item.overallScore >= 80 ? "Compliant" : item.overallScore >= 60 ? "Fair" : "At Risk"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" asChild>
+                      <Button variant="ghost" size="sm" asChild className="font-bold">
                         <Link href={`/assessments/${item.id}/results`}>
                           <Eye className="w-4 h-4 mr-2" />
-                          View
+                          View Report
                         </Link>
                       </Button>
                     </TableCell>
@@ -173,10 +169,12 @@ function HistoryContent() {
                 {filtered.length === 0 && !loading && (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-24 text-muted-foreground italic">
-                      <div className="flex flex-col items-center gap-2">
-                        <HistoryIcon className="w-12 h-12 opacity-20 mb-2" />
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="bg-muted p-6 rounded-full">
+                          <HistoryIcon className="w-12 h-12 opacity-20" />
+                        </div>
                         <p>No matching audit records found.</p>
-                        <Button variant="link" asChild>
+                        <Button variant="link" asChild className="font-black text-accent">
                           <Link href="/assessments/new">Start your first audit</Link>
                         </Button>
                       </div>
