@@ -16,19 +16,29 @@ service cloud.firestore {
 
     // Assessments
     match /assessments/{doc} {
-      allow read: if request.auth != null && 
+      // Allow single document fetch if owner or system owner
+      allow get: if request.auth != null && 
         (resource.data.userId == request.auth.uid ||
          (resource.data.systemId != null && isSystemOwner(resource.data.systemId)));
+      
+      // Allow collection queries only if filtered by userId
+      allow list: if request.auth != null && resource.data.userId == request.auth.uid;
+      
       allow write: if request.auth != null && request.auth.uid == resource.data.userId;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
 
     // Test runs
     match /testRuns/{doc} {
-      allow read: if request.auth != null && 
+      // Allow single document fetch if owner or assessment owner
+      allow get: if request.auth != null && 
         (resource.data.userId == request.auth.uid ||
          (resource.data.assessmentId != null && 
           get(/databases/$(database)/documents/assessments/$(resource.data.assessmentId)).data.userId == request.auth.uid));
+      
+      // Allow collection queries only if filtered by userId
+      allow list: if request.auth != null && resource.data.userId == request.auth.uid;
+      
       allow write: if request.auth != null && (request.auth.uid == resource.data.userId || request.auth.uid == request.resource.data.userId);
       allow create: if request.auth != null && (request.auth.uid == request.resource.data.userId || request.auth.uid == resource.data.userId);
     }

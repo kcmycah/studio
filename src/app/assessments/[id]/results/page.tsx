@@ -21,7 +21,6 @@ import {
   FileSpreadsheet,
   ShieldAlert,
   Briefcase,
-  PlayCircle,
   ExternalLink,
   Volume2
 } from "lucide-react";
@@ -69,7 +68,8 @@ export default function AssessmentResultsPage() {
 
         const q = query(
           collection(db, "testRuns"), 
-          where("assessmentId", "==", id)
+          where("assessmentId", "==", id as string),
+          where("userId", "==", user.uid)
         );
         const runsSnap = await getDocs(q);
         const runs = runsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as TestRun));
@@ -128,7 +128,7 @@ export default function AssessmentResultsPage() {
     utterance.onerror = () => setIsSpeaking(false);
     
     setIsSpeaking(true);
-    window.speechSynthesis.cancel(); // Stop any ongoing speech
+    window.speechSynthesis.cancel(); 
     window.speechSynthesis.speak(utterance);
   };
 
