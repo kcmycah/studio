@@ -1,8 +1,10 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useFirestore, useUser } from "@/firebase";
-import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,10 +35,13 @@ export default function NewSystemPage() {
         const userSnap = await getDoc(userRef);
         const status = userSnap.data()?.subscriptionStatus || "free";
         
-        const q = query(collection(db, "ai_systems"), where("userId", "==", currentUser.uid));
+        const q = query(
+          collection(db, "ai_systems"), 
+          where("userId", "==", currentUser.uid)
+        );
         const snap = await getDocs(q);
         
-        const max = status === "free" ? 2 : 10;
+        const max = status === "pro" ? 10 : status === "enterprise" ? 100 : 2;
         if (snap.size >= max) {
           setLimitReached(true);
         }
@@ -55,21 +60,32 @@ export default function NewSystemPage() {
     
     setLoading(true);
     const systemsRef = collection(db, "ai_systems");
-    const docData = { ...formData, userId: currentUser.uid, createdAt: serverTimestamp() };
+    const docData = { 
+      ...formData, 
+      userId: currentUser.uid, 
+      createdAt: serverTimestamp() 
+    };
 
-    addDoc(systemsRef, docData).catch(async (error) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: systemsRef.path,
-        operation: 'create',
-        requestResourceData: docData,
-      }));
-    });
-
-    toast({ title: "System Registered", description: "System added to your inventory." });
-    setTimeout(() => router.push("/dashboard"), 500);
+    addDoc(systemsRef, docData)
+      .then(() => {
+        toast({ title: "System Registered", description: "System added to your inventory." });
+        router.push("/dashboard");
+      })
+      .catch(async (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: systemsRef.path,
+          operation: 'create',
+          requestResourceData: docData,
+        }));
+        setLoading(false);
+      });
   };
 
-  if (checkingLimit) return <div className="flex justify-center p-24"><Loader2 className="animate-spin text-accent" /></div>;
+  if (checkingLimit) return (
+    <div className="flex justify-center p-24">
+      <Loader2 className="animate-spin text-accent" />
+    </div>
+  );
 
   return (
     <AuthGuard>
