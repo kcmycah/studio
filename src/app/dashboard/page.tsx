@@ -10,6 +10,7 @@ import { AISystem, Assessment, UserProfile } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { 
   Bot, 
   ArrowRight, 
@@ -28,13 +29,15 @@ import {
   List,
   MoreVertical,
   Trash2,
-  Edit
+  Edit,
+  ShieldCheck
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { OnboardingModal } from "@/components/onboarding-modal";
 import { useToast } from "@/hooks/use-toast";
 import { loadUserPreferences, saveUserPreferences } from "@/lib/preferences";
+import { getUserUsage, UserUsage } from "@/lib/usage";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,6 +62,8 @@ export default function Dashboard() {
 
   const [dashboardView, setDashboardView] = useState<"grid" | "list">("grid");
   const [deletingSystem, setDeletingSystem] = useState<string | null>(null);
+  const [usage, setUsage] = useState<UserUsage | null>(null);
+  const [loadingUsage, setLoadingUsage] = useState(true);
 
   const systemsQuery = useMemo(() => {
     if (!db || !user) return null;
@@ -75,7 +80,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user || !db) return;
-    const fetchProfile = async () => {
+    const fetchData = async () => {
       try {
         const userRef = doc(db, "users", user.uid);
         const snap = await getDoc(userRef);
@@ -87,12 +92,17 @@ export default function Dashboard() {
         if (prefs?.dashboardView) {
           setDashboardView(prefs.dashboardView);
         }
+
+        const usageData = await getUserUsage(db, user.uid);
+        setUsage(usageData);
       } catch (err) {
-        console.error("Dashboard profile fetch error:", err);
+        console.error("Dashboard metadata fetch error:", err);
+      } finally {
+        setLoadingUsage(false);
       }
     };
-    fetchProfile();
-  }, [user, db]);
+    fetchData();
+  }, [user, db, systems]); // Refresh usage when systems change
 
   useEffect(() => {
     if (!systems || !db || !user) {
@@ -163,8 +173,7 @@ export default function Dashboard() {
     return "text-destructive";
   };
 
-  const isFree = !userProfile || userProfile.subscriptionStatus === 'free';
-  const systemLimitReached = isFree && (systems?.length || 0) >= 2;
+  const limitReached = usage && usage.remainingActive === 0;
 
   return (
     <AuthGuard>
@@ -182,7 +191,7 @@ export default function Dashboard() {
               <Button variant="ghost" size="icon" onClick={toggleView} title={`Switch to ${dashboardView === "grid" ? "list" : "grid"} view`}>
                 {dashboardView === "grid" ? <List className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
               </Button>
-              <Button variant="outline" asChild disabled={systemLimitReached}>
+              <Button variant="outline" asChild disabled={limitReached}>
                 <Link href="/systems/new">
                   <PlusCircle className="w-4 h-4 mr-2" />
                   Add System
@@ -197,20 +206,49 @@ export default function Dashboard() {
             </div>
           </header>
 
-          {systemLimitReached && (
-            <Card className="bg-accent/5 border-accent/20 mb-8 p-4 flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="bg-accent/10 p-2 rounded-full">
-                  <Zap className="w-4 h-4 text-accent" />
+          {/* Usage Monitoring Section */}
+          {!loadingUsage && usage && (
+            <Card className="bg-card/30 border-border/50 mb-10 overflow-hidden">
+              <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-accent" />
+                    <h3 className="font-black text-xs uppercase tracking-[0.2em]">Active Plan: {usage.isPro ? 'Pro' : 'Free'}</h3>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Monitoring your organizational audit bandwidth.</p>
+                  {!usage.isPro && (
+                    <Button variant="link" size="sm" asChild className="p-0 h-auto text-accent font-black text-[10px] uppercase tracking-widest">
+                      <Link href="/billing">Upgrade for Unlimited Capacity</Link>
+                    </Button>
+                  )}
                 </div>
-                <div>
-                  <p className="text-sm font-semibold">Free limit reached</p>
-                  <p className="text-xs text-muted-foreground">You can register up to 2 systems. Upgrade to unlock unlimited audits.</p>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                    <span>Active Systems</span>
+                    <span className="text-muted-foreground">{usage.activeCount} / {usage.isPro ? '∞' : usage.maxActive}</span>
+                  </div>
+                  <Progress value={usage.isPro ? 0 : (usage.activeCount / usage.maxActive) * 100} className="h-2" />
+                  {usage.remainingActive === 0 && !usage.isPro && (
+                    <p className="text-[9px] font-bold text-destructive uppercase tracking-tighter flex items-center gap-1">
+                      <Zap className="w-3 h-3" /> System limit reached. Upgrade to add more.
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                    <span>Monthly Creations</span>
+                    <span className="text-muted-foreground">{usage.monthlyUsed} / {usage.isPro ? '∞' : usage.maxMonthly}</span>
+                  </div>
+                  <Progress value={usage.isPro ? 0 : (usage.monthlyUsed / usage.maxMonthly) * 100} className="h-2" />
+                  {usage.remainingMonthly <= 1 && !usage.isPro && (
+                    <p className="text-[9px] font-bold text-amber-500 uppercase tracking-tighter flex items-center gap-1">
+                      <Zap className="w-3 h-3" /> Monthly quota low.
+                    </p>
+                  )}
                 </div>
               </div>
-              <Button size="sm" asChild className="bg-accent text-white hover:bg-accent/90">
-                <Link href="/billing">Upgrade Now</Link>
-              </Button>
             </Card>
           )}
 

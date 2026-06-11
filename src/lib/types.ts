@@ -61,6 +61,7 @@ export interface UserProfile {
   email: string;
   subscriptionStatus: SubscriptionStatus;
   lemonSqueezyCustomerId?: string;
+  monthlySystemCreations?: number;
   settings: {
     emailResults: boolean;
     scheduledMonitor?: {

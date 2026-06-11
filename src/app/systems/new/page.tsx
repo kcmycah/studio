@@ -5,17 +5,18 @@ import { useState, useEffect } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useFirestore, useUser } from "@/firebase";
-import { collection, query, where, getDocs, doc, getDoc, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc, increment } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bot, Globe, Loader2, Save, Zap } from "lucide-react";
+import { Bot, Globe, Loader2, Save, Zap, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { getUserUsage, UserUsage } from "@/lib/usage";
 import Link from "next/link";
 
 export default function NewSystemPage() {
@@ -25,27 +26,15 @@ export default function NewSystemPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [checkingLimit, setCheckingLimit] = useState(true);
-  const [limitReached, setLimitReached] = useState(false);
+  const [usage, setUsage] = useState<UserUsage | null>(null);
   const [formData, setFormData] = useState({ name: "", url: "", type: "Chatbot" });
 
   useEffect(() => {
     if (!currentUser || !db) return;
     const checkLimit = async () => {
       try {
-        const userRef = doc(db, "users", currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        const status = userSnap.data()?.subscriptionStatus || "free";
-        
-        const q = query(
-          collection(db, "ai_systems"), 
-          where("userId", "==", currentUser.uid)
-        );
-        const snap = await getDocs(q);
-        
-        const max = status === "pro" ? 10 : status === "enterprise" ? 100 : 2;
-        if (snap.size >= max) {
-          setLimitReached(true);
-        }
+        const usageData = await getUserUsage(db, currentUser.uid);
+        setUsage(usageData);
       } catch (err) {
         console.error("Limit check error:", err);
       } finally {
@@ -55,31 +44,56 @@ export default function NewSystemPage() {
     checkLimit();
   }, [currentUser, db]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser || !db || limitReached) return;
+    if (!currentUser || !db || !usage) return;
+
+    if (usage.remainingActive === 0) {
+      toast({
+        variant: "destructive",
+        title: "Active Limit Reached",
+        description: "You have reached the maximum number of active AI systems for your plan."
+      });
+      return;
+    }
+
+    if (usage.remainingMonthly === 0) {
+      toast({
+        variant: "destructive",
+        title: "Monthly Quota Reached",
+        description: "You have reached your monthly creation quota. Upgrade to Pro for unlimited access."
+      });
+      return;
+    }
     
     setLoading(true);
     const systemsRef = collection(db, "ai_systems");
+    const userRef = doc(db, "users", currentUser.uid);
     const docData = { 
       ...formData, 
       userId: currentUser.uid, 
       createdAt: serverTimestamp() 
     };
 
-    addDoc(systemsRef, docData)
-      .then(() => {
-        toast({ title: "System Registered", description: "System added to your inventory." });
-        router.push("/dashboard");
-      })
-      .catch(async (error) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: systemsRef.path,
-          operation: 'create',
-          requestResourceData: docData,
-        }));
-        setLoading(false);
+    try {
+      // 1. Create the system
+      await addDoc(systemsRef, docData);
+      
+      // 2. Increment monthly creation counter
+      await updateDoc(userRef, {
+        monthlySystemCreations: increment(1)
       });
+
+      toast({ title: "System Registered", description: "System added to your inventory." });
+      router.push("/dashboard");
+    } catch (error: any) {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: systemsRef.path,
+        operation: 'create',
+        requestResourceData: docData,
+      }));
+      setLoading(false);
+    }
   };
 
   if (checkingLimit) return (
@@ -87,6 +101,9 @@ export default function NewSystemPage() {
       <Loader2 className="animate-spin text-accent" />
     </div>
   );
+
+  const activeLimitReached = usage && usage.remainingActive === 0;
+  const monthlyLimitReached = usage && usage.remainingMonthly === 0;
 
   return (
     <AuthGuard>
@@ -101,13 +118,20 @@ export default function NewSystemPage() {
               </div>
               <CardDescription>Define the AI endpoint you want to audit for accessibility scans.</CardDescription>
             </CardHeader>
-            {limitReached ? (
+            
+            {(activeLimitReached || monthlyLimitReached) ? (
               <CardContent className="py-10 text-center space-y-4">
                 <div className="bg-accent/10 p-4 rounded-full w-fit mx-auto">
                   <Zap className="w-10 h-10 text-accent" />
                 </div>
-                <h3 className="text-xl font-bold">Plan Limit Reached</h3>
-                <p className="text-muted-foreground">Free users are limited to 2 AI systems. Upgrade to Pro to manage more endpoints.</p>
+                <h3 className="text-xl font-bold">
+                  {activeLimitReached ? 'Active Plan Limit Reached' : 'Monthly Creation Quota Reached'}
+                </h3>
+                <p className="text-muted-foreground">
+                  {activeLimitReached 
+                    ? `Free users are limited to 2 active systems. Delete an existing system or upgrade to Pro.`
+                    : `Free users can create up to 5 systems per month. Upgrade to Pro for unlimited creations.`}
+                </p>
                 <Button asChild className="bg-accent text-white">
                   <Link href="/billing">Upgrade Plan</Link>
                 </Button>
@@ -115,6 +139,16 @@ export default function NewSystemPage() {
             ) : (
               <form onSubmit={handleSubmit}>
                 <CardContent className="space-y-6">
+                  {usage && !usage.isPro && usage.remainingActive === 1 && (
+                    <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-bold text-amber-500 uppercase tracking-tight">Final Slot Remaining</p>
+                        <p className="text-xs text-amber-500/80">This is your last available system slot on the Free plan.</p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <Label htmlFor="name">System Name</Label>
                     <Input id="name" placeholder="e.g. Support Assistant" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
