@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -150,7 +151,7 @@ export default function AssessmentResultsPage() {
               </Button>
               <h1 className="text-4xl font-black tracking-tighter">DISA Executive Briefing</h1>
               <p className="text-muted-foreground mt-1 flex items-center gap-2">
-                <Briefcase className="w-4 h-4" /> Internal Document • Confidential • {assessment?.createdAt.toDate().toLocaleDateString()}
+                <Briefcase className="w-4 h-4" /> Internal Document • Confidential • {assessment?.createdAt?.toDate?.()?.toLocaleDateString()}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">

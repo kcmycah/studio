@@ -52,7 +52,7 @@ function HistoryContent() {
     if (!user || !db) return;
     setLoading(true);
     try {
-      let q = query(
+      const q = query(
         collection(db, "assessments"), 
         where("userId", "==", user.uid)
       );
@@ -70,7 +70,12 @@ function HistoryContent() {
             systemName: systemsMap.get(data.systemId) || "Unknown System"
           };
         })
-        .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+        .filter(item => !!item.createdAt) // Ensure createdAt exists to prevent sort errors
+        .sort((a, b) => {
+          const timeA = a.createdAt?.toMillis?.() || 0;
+          const timeB = b.createdAt?.toMillis?.() || 0;
+          return timeB - timeA;
+        });
 
       const filteredResults = systemIdFilter 
         ? results.filter(a => a.systemId === systemIdFilter)
@@ -79,6 +84,7 @@ function HistoryContent() {
       setAssessments(filteredResults);
     } catch (err) {
       console.error("Error fetching history:", err);
+      toast({ variant: "destructive", title: "Failed to load history" });
     } finally {
       setLoading(false);
     }
@@ -92,7 +98,6 @@ function HistoryContent() {
     if (!deletingId || !db) return;
     try {
       await deleteDoc(doc(db, "assessments", deletingId));
-      // We should also delete associated test runs, but for MVP we just remove the record
       setAssessments(prev => prev.filter(a => a.id !== deletingId));
       toast({ title: "Report Deleted" });
     } catch (err) {
@@ -163,11 +168,11 @@ function HistoryContent() {
                     <TableCell className="font-bold">
                       <div className="flex items-center gap-2">
                         <Layers className="w-4 h-4 text-accent" />
-                        {item.systemName}
+                        <span className="truncate max-w-[200px]">{item.systemName}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs font-medium">
-                      {item.createdAt.toDate().toLocaleDateString()}
+                      {item.createdAt?.toDate?.().toLocaleDateString() || "Pending..."}
                     </TableCell>
                     <TableCell>
                        <span className={cn("text-2xl font-black", 
