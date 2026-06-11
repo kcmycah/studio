@@ -6,7 +6,7 @@ import { AuthGuard } from "@/components/auth-guard";
 import { Navbar } from "@/components/navbar";
 import { useUser, useFirestore, useCollection } from "@/firebase";
 import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
-import { AISystem, Assessment } from "@/lib/types";
+import { AISystem, Assessment, UserProfile } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,20 +15,21 @@ import {
   ArrowRight, 
   ExternalLink, 
   Plus, 
-  TrendingUp, 
   AlertCircle,
-  Activity,
   Loader2,
   PlusCircle,
   Calendar,
   Layers,
-  BarChart3
+  BarChart3,
+  ShieldCheck,
+  Zap
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { OnboardingModal } from "@/components/onboarding-modal";
 
 /**
- * Enhanced Dashboard with Mini-Cards per AI System
+ * Enhanced Dashboard with Mini-Cards per AI System and Onboarding
  */
 export default function Dashboard() {
   const { user } = useUser();
@@ -45,6 +46,19 @@ export default function Dashboard() {
   const { data: systems, loading: systemsLoading } = useCollection<AISystem>(systemsQuery);
   const [systemLatestAssessments, setSystemLatestAssessments] = useState<Record<string, { assessment: Assessment, count: number }>>({});
   const [loadingLatest, setLoadingLatest] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
+  // Fetch user profile for subscription status
+  useEffect(() => {
+    if (!user || !db) return;
+    const fetchProfile = async () => {
+      const snap = await getDocs(query(collection(db, "users"), where("email", "==", user.email)));
+      if (!snap.empty) {
+        setUserProfile({ id: snap.docs[0].id, ...snap.docs[0].data() } as UserProfile);
+      }
+    };
+    fetchProfile();
+  }, [user, db]);
 
   // Fetch latest assessment for each system to populate mini-cards
   useEffect(() => {
@@ -55,11 +69,9 @@ export default function Dashboard() {
       const results: Record<string, { assessment: Assessment, count: number }> = {};
       
       for (const system of systems) {
-        // Get all assessments count
         const countQuery = query(collection(db, "assessments"), where("systemId", "==", system.id));
         const countSnap = await getDocs(countQuery);
         
-        // Get latest assessment
         const latestQuery = query(
           collection(db, "assessments"), 
           where("systemId", "==", system.id),
@@ -96,18 +108,32 @@ export default function Dashboard() {
     return "bg-destructive/10 border-destructive/20";
   };
 
+  const isFree = !userProfile || userProfile.subscriptionStatus === 'free';
+  const systemLimitReached = isFree && (systems?.length || 0) >= 2;
+
   return (
     <AuthGuard>
       <Navbar />
+      <OnboardingModal />
       <main className="container mx-auto px-4 py-12 max-w-7xl">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
           <div>
-            <h1 className="font-headline text-4xl font-bold tracking-tight mb-2">Workspace Dashboard</h1>
+            <div className="flex items-center gap-2 mb-2">
+              <h1 className="font-headline text-4xl font-bold tracking-tight">Workspace</h1>
+              {userProfile?.subscriptionStatus && (
+                <Badge className={cn(
+                  "uppercase text-[10px]",
+                  userProfile.subscriptionStatus === 'pro' ? "bg-primary text-primary-foreground" : "bg-muted"
+                )}>
+                  {userProfile.subscriptionStatus}
+                </Badge>
+              )}
+            </div>
             <p className="text-muted-foreground text-lg">Monitor inclusive AI compliance across your system inventory.</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Link href="/systems/new">
-              <Button variant="outline" className="h-11 px-6 text-base">
+              <Button variant="outline" className="h-11 px-6 text-base" disabled={systemLimitReached}>
                 <PlusCircle className="w-5 h-5 mr-2" />
                 Add System
               </Button>
@@ -120,6 +146,21 @@ export default function Dashboard() {
             </Link>
           </div>
         </header>
+
+        {systemLimitReached && (
+          <Card className="bg-primary/5 border-primary/20 mb-8 p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Zap className="w-5 h-5 text-primary" />
+              <div>
+                <p className="font-bold text-sm">System Limit Reached</p>
+                <p className="text-xs text-muted-foreground">Free accounts are limited to 2 systems. Upgrade to Pro for unlimited auditing.</p>
+              </div>
+            </div>
+            <Button size="sm" className="h-8" asChild>
+              <Link href="/billing">Upgrade Now</Link>
+            </Button>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           {systems?.map((system) => {
