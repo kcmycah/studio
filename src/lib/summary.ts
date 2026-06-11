@@ -4,11 +4,13 @@ export interface SummaryOutput {
   text: string;
   recommendation: string;
   criticalFlags: string[];
+  problemStatement: string;
+  solutionStrategy: string;
 }
 
 /**
- * Generates a deterministic executive summary based on DISA score, domain results, and test findings.
- * Provides immediate, data-driven insights without external AI generation.
+ * Generates an executive-level deterministic summary using high-stakes professional terminology.
+ * Follows a Problem/Solution methodology for corporate stakeholders.
  */
 export function generateExecutiveSummary(
   score: number,
@@ -24,46 +26,39 @@ export function generateExecutiveSummary(
   const total = testRuns.length;
   const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
 
-  // Performance level based on score
-  let performance = '';
+  // Professional risk assessment
+  let riskStatus = '';
   if (score < 40) {
-    performance = 'CRITICAL level requiring immediate intervention';
+    riskStatus = 'EXPOSURE CRITICAL: Significant legal and functional barriers identified.';
   } else if (score < 60) {
-    performance = 'SIGNIFICANT accessibility gaps and equity risks';
+    riskStatus = 'SUBSTANTIAL RISK: Major compliance gaps detected in core interaction paths.';
   } else if (score < 80) {
-    performance = 'MODERATE compliance with room for technical improvement';
+    riskStatus = 'MODERATE COMPLIANCE: Standardized patterns identified with residual friction.';
   } else {
-    performance = 'STRONG DISA framework compliance';
+    riskStatus = 'OPTIMIZED PERFORMANCE: Demonstrating industry-leading inclusive benchmarks.';
   }
 
-  // Domain context
-  let domainInsight = '';
-  if (domainScores) {
-    const lowest = Object.entries(domainScores).reduce((a, b) => a[1] < b[1] ? a : b);
-    domainInsight = ` The most significant risk factor is identified in the ${lowest[0].toUpperCase()} domain (${lowest[1]}%).`;
-  }
-
-  // Extract failed personas
   const failedPersonas = testRuns.filter(run => !run.success).map(run => run.persona);
-  const criticalFlags = failedPersonas.length > 0 
-    ? [`Blocked personas: ${failedPersonas.join(', ')}`]
-    : [];
+  
+  const problemStatement = failedPersonas.length > 0
+    ? `The current AI implementation presents systematic functional blockages for users identifying as ${failedPersonas.join(', ')}. These barriers impede mission-critical workflows and represent a significant parity gap in service delivery.`
+    : `While technical parity is high, the system remains susceptible to regression. Current audits indicate a ${passRate}% success rate across all functional personas, with minor friction points identified in peripheral modules.`;
 
-  const summaryText = `This assessment for DISA Framework compliance resulted in an overall score of ${score}/100, which indicates ${performance}. The system successfully accommodated ${passed} of ${total} personas (${passRate}% functional equity).${domainInsight} Functional blockages were detected for ${failedPersonas.length > 0 ? failedPersonas.join(', ') : 'no specific'} personas.`;
+  const solutionStrategy = score < 70
+    ? `A comprehensive remediation roadmap is required. Focus must be prioritized on 'Critical' and 'Serious' barriers to restore functional access for ${failedPersonas.join(', ') || 'at-risk cohorts'}. Technical debt in the ${Object.entries(domainScores || {}).sort((a,b) => a[1]-b[1])[0]?.[0].toUpperCase() || 'Accessibility'} domain must be addressed to mitigate legal and brand exposure.`
+    : `Focus should shift toward 'AAA' optimization and proactive monitoring. Implementing a persistent feedback loop for diverse user cohorts will ensure the current ${score}/100 benchmark is maintained throughout the next deployment cycle.`;
 
-  // Recommendation logic
-  let recommendation = '';
-  if (score < 60) {
-    recommendation = 'IMMEDIATE ACTION: Resolve all critical functional blockages and address the highlighted domain deficits before the next release cycle.';
-  } else if (score < 80) {
-    recommendation = 'PRIORITY FIX: Address the recurring serious issues and initiate manual usability testing with the flagged personas to bridge the remaining equity gaps.';
-  } else {
-    recommendation = 'MAINTENANCE: Maintain current high standards and focus on achieving WCAG AAA compliance to ensure long-term inclusive performance.';
-  }
+  const summaryText = `This executive briefing details the findings of a DISA Framework assessment. The audit results in an overall Inclusive Performance Score of ${score}/100, signifying ${riskStatus}. Of the ${total} simulated disability personas, ${passed} successfully reached task completion, indicating a ${passRate}% functional equity threshold.`;
+
+  const recommendation = score < 60 
+    ? 'MANDATORY INTERVENTION: Authorize an immediate engineering sprint to resolve identified critical blockages.'
+    : 'STRATEGIC OPTIMIZATION: Integrate inclusive design patterns into the standard QA pipeline to bridge remaining parity gaps.';
 
   return {
     text: summaryText,
     recommendation,
-    criticalFlags,
+    criticalFlags: failedPersonas.map(p => `Functional Blockage: ${p}`),
+    problemStatement,
+    solutionStrategy
   };
 }
