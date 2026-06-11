@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
@@ -30,13 +29,20 @@ import {
   Mail,
   Volume2,
   VolumeX,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Info
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { computeKPIs } from "@/lib/filtering";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { 
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 export default function AssessmentResultsPage() {
   const { id } = useParams();
@@ -75,7 +81,6 @@ export default function AssessmentResultsPage() {
         const assessmentData = { id: assessmentSnap.id, ...assessmentSnap.data() } as Assessment;
         setAssessment(assessmentData);
         
-        // Load persisted summary if it exists
         if (assessmentData.details?.executiveSummary) {
           setAiSummary(assessmentData.details.executiveSummary);
         }
@@ -107,10 +112,46 @@ export default function AssessmentResultsPage() {
     };
     
     return [
-      { name: "Accessibility", score: data.accessibility, icon: ShieldCheck, color: "text-accent" },
-      { name: "Bias Risk", score: data.biasRisk, icon: AlertTriangle, color: "text-amber-500" },
-      { name: "Transparency", score: data.transparency, icon: Search, color: "text-emerald-500" },
-      { name: "Equity-Data", score: data.equityData, icon: Database, color: "text-blue-500" },
+      { 
+        name: "Accessibility", 
+        score: data.accessibility, 
+        icon: ShieldCheck, 
+        color: "text-accent",
+        description: "Measures compliance with technical WCAG 2.2 standards and functional completion for disabled personas.",
+        importance: "Foundational for any digital tool; without it, users with impairments are fundamentally locked out.",
+        advantages: "Standardized framework (WCAG) allows for clear benchmarking and engineering targets.",
+        downfalls: "Automated scanning only catches ~30-40% of issues; manual usability testing is still required for true equity."
+      },
+      { 
+        name: "Bias Risk", 
+        score: data.biasRisk, 
+        icon: AlertTriangle, 
+        color: "text-amber-500",
+        description: "Evaluates whether the AI responds differently based on the user's mentioned disability.",
+        importance: "Ensures parity of service so that a disabled user receives the same quality of assistance as a baseline user.",
+        advantages: "Identifies disparate impact that technical code audits would never reveal.",
+        downfalls: "Model non-determinism makes it hard to guarantee bias-free responses 100% of the time."
+      },
+      { 
+        name: "Transparency", 
+        score: data.transparency, 
+        icon: Search, 
+        color: "text-emerald-500",
+        description: "Checks for public disclosures, including Model Cards and data provenance documentation.",
+        importance: "Builds public trust and allows external auditors to verify safety claims.",
+        advantages: "Encourages corporate accountability and open-source contribution to safety knowledge.",
+        downfalls: "Documentation can be used as 'open-washing' to hide deeper proprietary flaws or lack of actual safety rigor."
+      },
+      { 
+        name: "Equity-Data", 
+        score: data.equityData, 
+        icon: Database, 
+        color: "text-blue-500",
+        description: "Assesses the inclusivity of the underlying training sets (demographics, geography, digital literacy).",
+        importance: "Addresses the 'Garbage In, Garbage Out' problem at the source of the AI's intelligence.",
+        advantages: "Solves long-term fairness by ensuring the model understands diverse human contexts from the start.",
+        downfalls: "Highly difficult to verify without access to private technical reports or training dataset audits."
+      },
     ];
   }, [assessment]);
 
@@ -137,26 +178,18 @@ export default function AssessmentResultsPage() {
       });
       
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "AI Summary service failed.");
-      }
+      if (!res.ok) throw new Error(data.error || "AI Summary service failed.");
       
       setAiSummary(data.executiveSummary);
       
-      // Persist the summary to Firestore
       const assessmentRef = doc(db, "assessments", id as string);
       updateDoc(assessmentRef, {
         "details.executiveSummary": data.executiveSummary
       });
 
-      toast({ title: "Summary Generated", description: "Analysis is now saved to this report." });
+      toast({ title: "Summary Generated" });
     } catch (err: any) {
-      toast({ 
-        variant: "destructive", 
-        title: "AI Generation Error", 
-        description: err.message 
-      });
+      toast({ variant: "destructive", title: "AI Generation Error", description: err.message });
     } finally {
       setGeneratingSummary(false);
     }
@@ -169,11 +202,7 @@ export default function AssessmentResultsPage() {
       const res = await fetch("/api/explain-impact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          issueDescription: issue.description, 
-          issueImpact: issue.impact, 
-          disabilityPersona: persona 
-        })
+        body: JSON.stringify({ issueDescription: issue.description, issueImpact: issue.impact, disabilityPersona: persona })
       });
       const data = await res.json();
       setExplanation(data.explanation);
@@ -185,20 +214,10 @@ export default function AssessmentResultsPage() {
   };
 
   const handlePlayTts = async () => {
-    if (isPlaying) {
-      audioRef.current?.pause();
-      setIsPlaying(false);
-      return;
-    }
+    if (isPlaying) { audioRef.current?.pause(); setIsPlaying(false); return; }
+    if (audioUrl) { audioRef.current?.play(); setIsPlaying(true); return; }
 
-    if (audioUrl) {
-      audioRef.current?.play();
-      setIsPlaying(true);
-      return;
-    }
-
-    const textToRead = aiSummary || `Assessment for ${system?.name}. Overall DISA Score is ${assessment?.overallScore}. ${kpis.criticalCount} critical issues found.`;
-    
+    const textToRead = aiSummary || `Assessment for ${system?.name}. Overall DISA Score is ${assessment?.overallScore}.`;
     setLoadingAudio(true);
     try {
       const res = await fetch("/api/tts", {
@@ -230,13 +249,13 @@ export default function AssessmentResultsPage() {
           email: user.email,
           systemName: system.name,
           score: assessment.overallScore,
-          summary: aiSummary || "Comprehensive DISA accessibility audit finalized.",
-          recommendation: assessment.overallScore >= 80 ? "Maintain current standards." : "Address critical functional blockages.",
+          summary: aiSummary || "Audit results attached.",
+          recommendation: assessment.overallScore >= 80 ? "Maintain standards." : "Address blockages.",
           version: assessment.version
         })
       });
       if (!res.ok) throw new Error("Email service failed.");
-      toast({ title: "Report Sent", description: `Results delivered to ${user.email}` });
+      toast({ title: "Report Sent" });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Email Error", description: err.message });
     } finally {
@@ -249,48 +268,25 @@ export default function AssessmentResultsPage() {
     const headers = ["Persona", "Success", "Issue ID", "Impact", "Description", "WCAG Level"];
     const rows = rawTestRuns.flatMap(run => 
       run.accessibilityIssues.length > 0 
-        ? run.accessibilityIssues.map(issue => [
-            run.persona,
-            run.success ? "Yes" : "No",
-            issue.id,
-            issue.impact,
-            `"${issue.description.replace(/"/g, '""')}"`,
-            issue.wcagLevel
-          ])
+        ? run.accessibilityIssues.map(issue => [run.persona, run.success ? "Yes" : "No", issue.id, issue.impact, `"${issue.description.replace(/"/g, '""')}"`, issue.wcagLevel])
         : [[run.persona, "Yes", "N/A", "N/A", "No issues found", "N/A"]]
     );
-
     const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `DISA-Audit-${system?.name}-v${assessment?.version}.csv`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
+    link.href = URL.createObjectURL(blob);
+    link.download = `DISA-Audit-${system?.name}-v${assessment?.version}.csv`;
     link.click();
-    document.body.removeChild(link);
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-      <Loader2 className="w-8 h-8 animate-spin text-accent" />
-    </div>
-  );
+  if (loading) return <div className="flex items-center justify-center min-h-screen bg-background"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>;
 
   return (
     <AuthGuard>
-      <div className="flex min-h-screen bg-background">
+      <div className="flex min-h-screen bg-background text-foreground">
         <AppSidebar />
         <main className="flex-1 md:ml-[260px] p-8 max-w-7xl mx-auto w-full">
-          {audioUrl && (
-            <audio 
-              ref={audioRef} 
-              src={audioUrl} 
-              onEnded={() => setIsPlaying(false)} 
-              className="hidden"
-            />
-          )}
+          {audioUrl && <audio ref={audioRef} src={audioUrl} onEnded={() => setIsPlaying(false)} className="hidden" />}
 
           <div className="mb-10 flex flex-col md:flex-row justify-between items-end gap-6">
             <div>
@@ -304,17 +300,9 @@ export default function AssessmentResultsPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleExportCSV}>
-                <FileSpreadsheet className="w-4 h-4 mr-2" />CSV Export
-              </Button>
-              <Button variant="outline" onClick={() => window.print()}>
-                <Download className="w-4 h-4 mr-2" />Print
-              </Button>
-              <Button 
-                className="bg-accent text-white hover:bg-accent/90"
-                disabled={sendingEmail}
-                onClick={handleSendEmail}
-              >
+              <Button variant="outline" onClick={handleExportCSV}><FileSpreadsheet className="w-4 h-4 mr-2" />CSV Export</Button>
+              <Button variant="outline" onClick={() => window.print()}><Download className="w-4 h-4 mr-2" />Print</Button>
+              <Button className="bg-accent text-white hover:bg-accent/90" disabled={sendingEmail} onClick={handleSendEmail}>
                 {sendingEmail ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
                 Email Results
               </Button>
@@ -325,14 +313,10 @@ export default function AssessmentResultsPage() {
             <Card className="p-8 flex flex-col items-center justify-center text-center bg-accent/5 border-accent/20">
               <p className="text-xs font-bold uppercase tracking-widest text-accent mb-2">Overall DISA Score</p>
               <div className="relative">
-                 <span className={cn("text-8xl font-black", (assessment?.overallScore ?? 0) >= 80 ? "text-emerald-500" : "text-accent")}>
-                   {assessment?.overallScore}
-                 </span>
+                 <span className={cn("text-8xl font-black", (assessment?.overallScore ?? 0) >= 80 ? "text-emerald-500" : "text-accent")}>{assessment?.overallScore}</span>
                  <span className="text-2xl font-bold text-muted-foreground absolute -top-2 -right-12">/ 100</span>
               </div>
-              <Badge variant="outline" className="mt-4 bg-background px-4 py-1">
-                Weighted Framework
-              </Badge>
+              <Badge variant="outline" className="mt-4 bg-background px-4 py-1">Weighted Framework</Badge>
             </Card>
 
             <Card className="lg:col-span-3">
@@ -356,88 +340,84 @@ export default function AssessmentResultsPage() {
             </Card>
           </div>
 
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Info className="w-6 h-6 text-accent" /> Framework Insights</h2>
+            <Card className="border-accent/10">
+              <Accordion type="single" collapsible className="w-full">
+                {domainScores.map((domain) => (
+                  <AccordionItem key={domain.name} value={domain.name} className="px-6 border-b last:border-0">
+                    <AccordionTrigger className="hover:no-underline">
+                      <div className="flex items-center gap-3">
+                        <domain.icon className={cn("w-5 h-5", domain.color)} />
+                        <span className="font-bold">{domain.name} Domain</span>
+                        <Badge variant="secondary" className="ml-2 text-[10px]">{domain.score}% Score</Badge>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                        <div className="space-y-2">
+                          <h4 className="text-xs font-black uppercase text-accent tracking-widest">Why it Matters</h4>
+                          <p className="text-sm text-muted-foreground leading-relaxed">{domain.importance}</p>
+                        </div>
+                        <div className="space-y-2">
+                          <h4 className="text-xs font-black uppercase text-emerald-500 tracking-widest">Advantages</h4>
+                          <p className="text-sm text-muted-foreground leading-relaxed">{domain.advantages}</p>
+                        </div>
+                        <div className="space-y-2">
+                          <h4 className="text-xs font-black uppercase text-destructive tracking-widest">Downfalls</h4>
+                          <p className="text-sm text-muted-foreground leading-relaxed">{domain.downfalls}</p>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </Card>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-            <Card className="lg:col-span-2 border-accent/20 shadow-lg relative overflow-hidden flex flex-col">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-accent" /> 
-                  AI Executive Summary
-                </CardTitle>
+            <Card className="lg:col-span-2 border-accent/20 shadow-lg flex flex-col">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-accent" /> AI Executive Summary</CardTitle>
                 <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    className="h-8 w-8 p-0" 
-                    onClick={handlePlayTts}
-                    disabled={loadingAudio}
-                  >
+                  <Button size="sm" variant="ghost" onClick={handlePlayTts} disabled={loadingAudio}>
                     {loadingAudio ? <Loader2 className="w-4 h-4 animate-spin" /> : isPlaying ? <VolumeX className="w-4 h-4 text-accent" /> : <Volume2 className="w-4 h-4" />}
                   </Button>
-                  {!aiSummary && !generatingSummary && (
-                    <Button size="sm" variant="ghost" className="text-accent" onClick={handleGenerateAiSummary}>
-                      Generate with Gemini
-                    </Button>
-                  )}
-                  {aiSummary && !generatingSummary && (
-                    <Button size="sm" variant="ghost" className="text-xs text-muted-foreground" onClick={handleGenerateAiSummary}>
-                      Regenerate
-                    </Button>
-                  )}
+                  <Button size="sm" variant="ghost" className="text-accent" onClick={handleGenerateAiSummary}>
+                    {aiSummary ? "Regenerate" : "Generate Analysis"}
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="flex-grow">
                 {generatingSummary ? (
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground space-y-4">
                     <Loader2 className="w-10 h-10 animate-spin text-accent" />
-                    <p className="text-sm animate-pulse">Analyzing persona outcomes and technical risks...</p>
+                    <p className="text-sm animate-pulse">Analyzing multi-domain outcomes...</p>
                   </div>
                 ) : aiSummary ? (
-                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-500">
-                    <p className="text-lg leading-relaxed font-medium text-foreground/90 whitespace-pre-wrap">
-                      {aiSummary}
-                    </p>
-                  </div>
+                  <p className="text-lg leading-relaxed font-medium whitespace-pre-wrap">{aiSummary}</p>
                 ) : (
                   <div className="py-12 text-center bg-muted/10 rounded-xl border border-dashed flex flex-col items-center justify-center space-y-4">
                     <BrainCircuit className="w-10 h-10 text-muted-foreground/30" />
-                    <Button onClick={handleGenerateAiSummary} className="bg-accent text-white">Generate Analysis</Button>
+                    <Button onClick={handleGenerateAiSummary} className="bg-accent text-white">Generate with Gemini</Button>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            <div className="space-y-6">
-              <Card className="p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <BarChart4 className="w-5 h-5 text-accent" />
-                  <h3 className="font-bold">Compliance Metrics</h3>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Pass Rate</p>
-                    <p className="text-2xl font-black text-emerald-500">{kpis.overallPassRate}%</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Criticals</p>
-                    <p className="text-2xl font-black text-destructive">{kpis.criticalCount}</p>
-                  </div>
-                </div>
-                {assessment?.details?.biasExplanation && (
-                  <div className="mt-6 pt-6 border-t">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase mb-2">Bias Risk Insights</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed italic line-clamp-4">
-                      {assessment.details.biasExplanation}
-                    </p>
-                  </div>
-                )}
-              </Card>
-            </div>
+            <Card className="p-6">
+              <div className="flex items-center gap-3 mb-6"><BarChart4 className="w-5 h-5 text-accent" /><h3 className="font-bold">Compliance Metrics</h3></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1"><p className="text-[10px] font-bold text-muted-foreground uppercase">Pass Rate</p><p className="text-2xl font-black text-emerald-500">{kpis.overallPassRate}%</p></div>
+                <div className="space-y-1"><p className="text-[10px] font-bold text-muted-foreground uppercase">Criticals</p><p className="text-2xl font-black text-destructive">{kpis.criticalCount}</p></div>
+              </div>
+              {assessment?.details?.biasExplanation && (
+                <div className="mt-6 pt-6 border-t"><p className="text-[10px] font-bold text-muted-foreground uppercase mb-2">Bias Risk Insights</p><p className="text-xs text-muted-foreground italic leading-relaxed">{assessment.details.biasExplanation}</p></div>
+              )}
+            </Card>
           </div>
 
-          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-            <FileText className="w-6 h-6 text-accent" />
-            Persona Success Mapping
-          </h2>
+          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2"><FileText className="w-6 h-6 text-accent" /> Persona Success Mapping</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
             {rawTestRuns.map(run => (
               <Card key={run.id} className="p-4 flex flex-col gap-4 border-t-4" style={{ borderTopColor: run.success ? 'hsl(var(--success))' : 'hsl(var(--destructive))' }}>
@@ -449,24 +429,14 @@ export default function AssessmentResultsPage() {
                     <span className="font-bold text-sm">{run.persona}</span>
                   </div>
                 </div>
-                
                 {run.accessibilityIssues.length > 0 ? (
                   <div className="space-y-2">
                     <p className="text-[10px] text-muted-foreground font-bold uppercase truncate">{run.accessibilityIssues[0].description}</p>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full h-8 text-[10px] font-bold gap-2"
-                      onClick={() => handleExplainImpact(run.accessibilityIssues[0], run.persona)}
-                      disabled={explainingId === run.accessibilityIssues[0].id}
-                    >
-                      {explainingId === run.accessibilityIssues[0].id ? <Loader2 className="w-3 h-3 animate-spin" /> : <BrainCircuit className="w-3 h-3" />}
-                      Explain Impact
+                    <Button variant="outline" size="sm" className="w-full h-8 text-[10px] font-bold gap-2" onClick={() => handleExplainImpact(run.accessibilityIssues[0], run.persona)} disabled={explainingId === run.accessibilityIssues[0].id}>
+                      {explainingId === run.accessibilityIssues[0].id ? <Loader2 className="w-3 h-3 animate-spin" /> : <BrainCircuit className="w-3 h-3" />} Explain Impact
                     </Button>
                   </div>
-                ) : (
-                  <p className="text-[10px] italic text-muted-foreground py-2">No blockages detected.</p>
-                )}
+                ) : <p className="text-[10px] italic text-muted-foreground py-2">No blockages detected.</p>}
               </Card>
             ))}
           </div>
@@ -474,15 +444,10 @@ export default function AssessmentResultsPage() {
           <Dialog open={!!explanation} onOpenChange={() => setExplanation(null)}>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
-                  <BrainCircuit className="w-6 h-6 text-accent" /> 
-                  Persona Impact Insight
-                </DialogTitle>
+                <DialogTitle className="flex items-center gap-2 text-2xl font-bold"><BrainCircuit className="w-6 h-6 text-accent" /> Persona Impact Insight</DialogTitle>
                 <DialogDescription className="text-lg font-medium">Real-world consequence for {explanationPersona}.</DialogDescription>
               </DialogHeader>
-              <div className="py-6 text-foreground/90 leading-relaxed text-lg bg-accent/5 p-6 rounded-xl border border-accent/10">
-                {explanation}
-              </div>
+              <div className="py-6 text-foreground/90 leading-relaxed text-lg bg-accent/5 p-6 rounded-xl border border-accent/10">{explanation}</div>
             </DialogContent>
           </Dialog>
         </main>

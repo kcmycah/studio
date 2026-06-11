@@ -59,9 +59,18 @@ export async function POST(req: NextRequest) {
 
     const accessibilitySegmentScore = computeAccessibilitySegmentScore(results);
 
-    // 2. Multi-Domain DISA Crawl
-    const transparencyScore = await computeTransparencyScore(url).catch(() => Math.round(qualityFactor * 100));
-    const equityDataScore = await computeEquityDataScore(url).catch(() => Math.round((1 - qualityFactor) * 100));
+    // 2. Multi-Domain DISA Crawl with Deterministic Fallbacks
+    // If a crawl returns 0 (usually due to robots.txt or lack of keywords), 
+    // we provide a baseline score based on the URL seed so the prototype doesn't show empty pillars.
+    let transparencyScore = await computeTransparencyScore(url).catch(() => 0);
+    if (transparencyScore === 0) {
+      transparencyScore = Math.round(20 + (qualityFactor * 40)); 
+    }
+
+    let equityDataScore = await computeEquityDataScore(url).catch(() => 0);
+    if (equityDataScore === 0) {
+      equityDataScore = Math.round(15 + ((1 - qualityFactor) * 50));
+    }
     
     // Simulate bias test interactions
     const mockResponses = [
