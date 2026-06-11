@@ -119,6 +119,31 @@ export default function AssessmentResultsPage() {
     return generateExecutiveSummary(assessment.overallScore, rawTestRuns, topIssues);
   }, [assessment, rawTestRuns, topIssues]);
 
+  const handleEmailReport = async () => {
+    if (!user || !assessment || !system || !summary) return;
+    setEmailLoading(true);
+    try {
+      const res = await fetch("/api/send-results", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: user.email,
+          systemName: system.name,
+          score: assessment.overallScore,
+          summary: summary.text,
+          recommendation: summary.recommendation,
+          version: assessment.version
+        })
+      });
+      if (!res.ok) throw new Error("Failed to send email");
+      toast({ title: "Report Sent", description: `Check your inbox at ${user.email}` });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Email Error", description: err.message });
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
   const handleExplainImpact = async (issue: any, persona: string) => {
     setExplainingId(issue.id);
     setExplanationPersona(persona);
@@ -199,8 +224,14 @@ export default function AssessmentResultsPage() {
               <p className="text-muted-foreground mt-1">Audit conducted on {assessment?.createdAt.toDate().toLocaleDateString()}</p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => {}} disabled={emailLoading} className="border-accent text-accent">
-                <Mail className="w-4 h-4 mr-2" />Email Report
+              <Button 
+                variant="outline" 
+                onClick={handleEmailReport} 
+                disabled={emailLoading} 
+                className="border-accent text-accent"
+              >
+                {emailLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Mail className="w-4 h-4 mr-2" />}
+                Email Report
               </Button>
               <Button asChild className="bg-accent text-white hover:bg-accent/90">
                 <Link href={`/history?system=${system?.id}`}><BarChart3 className="w-4 h-4 mr-2" />History</Link>

@@ -53,9 +53,10 @@ export default function Dashboard() {
     if (!user || !db) return;
     const fetchProfile = async () => {
       try {
-        const snap = await getDocs(query(collection(db, "users"), where("email", "==", user.email)));
-        if (!snap.empty) {
-          setUserProfile({ id: snap.docs[0].id, ...snap.docs[0].data() } as UserProfile);
+        const userRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userRef);
+        if (snap.exists()) {
+          setUserProfile({ id: snap.id, ...snap.data() } as UserProfile);
         }
       } catch (err) {
         console.error("Dashboard profile fetch error:", err);
@@ -65,7 +66,10 @@ export default function Dashboard() {
   }, [user, db]);
 
   useEffect(() => {
-    if (!systems || systems.length === 0 || !db || !user) return;
+    if (!systems || systems.length === 0 || !db || !user) {
+      setLoadingLatest(false);
+      return;
+    }
 
     const fetchData = async () => {
       setLoadingLatest(true);
@@ -97,7 +101,7 @@ export default function Dashboard() {
         toast({
           variant: "destructive",
           title: "Dashboard Data Error",
-          description: "Failed to load latest assessment trends. Please refresh."
+          description: "Failed to load latest assessment trends."
         });
       } finally {
         setLoadingLatest(false);
@@ -151,7 +155,11 @@ export default function Dashboard() {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {systems?.map((system) => {
+            {systemsLoading ? (
+               Array.from({ length: 3 }).map((_, i) => (
+                 <Card key={i} className="h-[300px] animate-pulse bg-muted" />
+               ))
+            ) : systems?.map((system) => {
               const data = systemStats[system.id];
               const hasAssessment = !!data;
               

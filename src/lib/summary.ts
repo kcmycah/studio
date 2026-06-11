@@ -23,6 +23,7 @@ export function generateExecutiveSummary(
   testRuns: TestRun[],
   topIssues: TopIssue[]
 ): SummaryOutput {
+  // Fixed typo from testRurns to testRuns
   const passed = testRuns.filter(run => run.success).length;
   const total = testRuns.length;
   const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
