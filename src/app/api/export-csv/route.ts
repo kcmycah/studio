@@ -1,8 +1,8 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { stringify } from 'csv-stringify/sync';
 import { initializeFirebase } from '@/firebase';
 import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { generatePersonaConclusion } from '@/lib/personaConclusion';
 
 export const maxDuration = 60;
 
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     const testRunsSnap = await getDocs(testRunsQuery);
     const testRuns = testRunsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    // Flatten all accessibility issues for detailed row-by-row violation reporting
+    // Build CSV rows
     const rows: any[][] = [];
     
     // Header row
@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
       'Equity Data Score',
       'Persona', 
       'Test Success', 
+      'Persona Conclusion',
       'Violation ID', 
       'Impact', 
       'Description', 
@@ -60,15 +61,14 @@ export async function POST(req: NextRequest) {
       assessment.domainScores?.equityData || 0
     ];
 
-    let issueFound = false;
     for (const run of testRuns) {
+      const conclusion = generatePersonaConclusion(run as any);
+      const personaBaseData = [...baseData, run.persona, run.success ? 'Pass' : 'FAIL', conclusion];
+      
       if (run.accessibilityIssues && run.accessibilityIssues.length > 0) {
-        issueFound = true;
         for (const issue of run.accessibilityIssues) {
           rows.push([
-            ...baseData,
-            run.persona,
-            run.success ? 'Pass' : 'FAIL',
+            ...personaBaseData,
             issue.id || 'N/A',
             (issue.impact || 'N/A').toUpperCase(),
             issue.description || 'N/A',
@@ -76,11 +76,8 @@ export async function POST(req: NextRequest) {
           ]);
         }
       } else {
-        // If persona passed with no issues, add a summary row for that persona
         rows.push([
-          ...baseData,
-          run.persona,
-          'Pass',
+          ...personaBaseData,
           'N/A',
           'N/A',
           'No significant barriers detected.',

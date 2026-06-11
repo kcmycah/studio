@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -22,13 +21,21 @@ import {
   ShieldAlert,
   Briefcase,
   PlayCircle,
-  ExternalLink
+  ExternalLink,
+  Info
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { computeKPIs } from "@/lib/filtering";
 import { generateExecutiveSummary } from "@/lib/executiveSummary";
+import { generatePersonaConclusion } from "@/lib/personaConclusion";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function AssessmentResultsPage() {
   const { id } = useParams();
@@ -78,7 +85,6 @@ export default function AssessmentResultsPage() {
   const summary = useMemo(() => {
     if (!assessment || rawTestRuns.length === 0) return null;
     
-    // Aggregate top issues
     const issuesMap = new Map<string, { id: string; impact: string; count: number }>();
     rawTestRuns.forEach(run => {
       (run.accessibilityIssues || []).forEach(issue => {
@@ -132,10 +138,7 @@ export default function AssessmentResultsPage() {
           recipientEmail: user.email
         })
       });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Email service failed.");
-      }
+      if (!res.ok) throw new Error("Email service failed.");
       toast({ title: "Briefing Delivered", description: `The executive report has been sent to ${user.email}.` });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Delivery Error", description: err.message });
@@ -315,18 +318,43 @@ export default function AssessmentResultsPage() {
 
               <section className="space-y-10">
                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground border-b border-black/10 pb-2">IV. Persona Success Mapping</h3>
-                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                    {rawTestRuns.map(run => (
-                      <div key={run.id} className={cn("p-5 rounded-2xl border text-center flex flex-col items-center gap-4 transition-all shadow-sm", run.success ? "bg-white border-black/10" : "bg-red-50 border-red-100")}>
-                         <div className={cn("p-2.5 rounded-full", run.success ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-600")}>
-                            {run.success ? <CheckCircle2 className="w-6 h-6" /> : <ShieldAlert className="w-6 h-6" />}
-                         </div>
-                         <div className="space-y-1">
-                           <p className="text-[10px] font-black uppercase leading-none tracking-tight">{run.persona}</p>
-                           <p className={cn("text-[9px] font-bold uppercase tracking-widest", run.success ? "text-emerald-600" : "text-red-600")}>{run.success ? "Compliant" : "At Risk"}</p>
-                         </div>
-                      </div>
-                    ))}
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {rawTestRuns.map(run => {
+                      const conclusion = generatePersonaConclusion(run);
+                      return (
+                        <Card key={run.id} className={cn("p-6 rounded-2xl border flex flex-col gap-4 transition-all shadow-sm h-full", run.success ? "bg-white border-black/10" : "bg-red-50 border-red-100")}>
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-1">
+                               <p className="text-sm font-black uppercase tracking-tight">{run.persona}</p>
+                               <Badge variant={run.success ? "secondary" : "outline"} className={cn("text-[9px] font-bold uppercase tracking-widest px-2 py-0.5", run.success ? "bg-emerald-500/10 text-emerald-600 border-none" : "text-red-600 border-red-200")}>
+                                 {run.success ? "Compliant" : "At Risk"}
+                               </Badge>
+                            </div>
+                            <div className={cn("p-2 rounded-full", run.success ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-600")}>
+                               {run.success ? <CheckCircle2 className="w-5 h-5" /> : <ShieldAlert className="w-5 h-5" />}
+                            </div>
+                          </div>
+                          <div className="space-y-3">
+                            <p className="text-xs font-medium text-black/70 leading-relaxed italic">
+                              "{conclusion}"
+                            </p>
+                            {run.accessibilityIssues.length > 0 && (
+                              <div className="pt-2 border-t border-black/5">
+                                <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-2">Key Barriers:</p>
+                                <ul className="space-y-1">
+                                  {run.accessibilityIssues.slice(0, 2).map((issue, idx) => (
+                                    <li key={idx} className="text-[10px] flex items-center gap-1.5 font-bold">
+                                      <span className={cn("w-1.5 h-1.5 rounded-full", issue.impact === 'critical' ? 'bg-red-500' : 'bg-amber-500')} />
+                                      {issue.description.substring(0, 50)}...
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </Card>
+                      );
+                    })}
                  </div>
               </section>
 

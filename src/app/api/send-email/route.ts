@@ -1,9 +1,9 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { initializeFirebase } from '@/firebase';
 import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { generateExecutiveSummary } from '@/lib/executiveSummary';
+import { generatePersonaConclusion } from '@/lib/personaConclusion';
 
 export const maxDuration = 60;
 
@@ -42,7 +42,6 @@ export async function POST(req: NextRequest) {
 
     const passedCount = testRuns.filter(run => run.success).length;
     
-    // Aggregate top issues
     const issuesMap = new Map<string, { id: string; impact: string; count: number }>();
     testRuns.forEach(run => {
       (run.accessibilityIssues || []).forEach((issue: any) => {
@@ -85,7 +84,7 @@ export async function POST(req: NextRequest) {
               <tr style="background-color: #f9fafb; text-align: left;">
                 <th style="padding: 10px; font-size: 11px; text-transform: uppercase;">Persona</th>
                 <th style="padding: 10px; font-size: 11px; text-transform: uppercase;">Status</th>
-                <th style="padding: 10px; font-size: 11px; text-transform: uppercase;">Issues</th>
+                <th style="padding: 10px; font-size: 11px; text-transform: uppercase;">Conclusion</th>
               </tr>
             </thead>
             <tbody>
@@ -93,7 +92,7 @@ export async function POST(req: NextRequest) {
                 <tr style="border-bottom: 1px solid #eee;">
                   <td style="padding: 10px; font-size: 14px; font-weight: 600;">${run.persona}</td>
                   <td style="padding: 10px; font-size: 14px;">${run.success ? '✅ Pass' : '❌ FAIL'}</td>
-                  <td style="padding: 10px; font-size: 14px;">${run.accessibilityIssues?.length || 0}</td>
+                  <td style="padding: 10px; font-size: 12px; color: #666;">${generatePersonaConclusion(run as any)}</td>
                 </tr>
               `).join('')}
             </tbody>
