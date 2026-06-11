@@ -25,7 +25,9 @@ import {
   Volume2,
   Pause,
   Filter,
-  Activity
+  Activity,
+  Download,
+  Crown
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -161,10 +163,8 @@ export default function AssessmentResultsPage() {
     return generateExecutiveSummary(assessment.overallScore, filteredRuns, topIssues);
   }, [assessment, filteredRuns, topIssues]);
 
-  // Simulated chart data based on DISA segments
   const scoreBreakdown = useMemo(() => {
     if (!assessment) return [];
-    // Deterministic simulation for chart segments
     const base = assessment.overallScore;
     return [
       { name: "Accessibility", score: Math.min(100, base + 5), fill: "hsl(var(--accent))" },
@@ -176,6 +176,49 @@ export default function AssessmentResultsPage() {
   const handleApplyFilter = (newFilters: any) => {
     setFilters(newFilters);
     if (user) saveUserPreferences(user.uid, { filters: newFilters });
+  };
+
+  const isPro = userProfile?.subscriptionStatus === 'pro' || userProfile?.subscriptionStatus === 'enterprise';
+
+  const handleExportCSV = () => {
+    if (!isPro) {
+      toast({
+        title: "Pro Feature",
+        description: "Upgrade to export detailed audit logs as CSV.",
+        action: <Button variant="outline" size="sm" onClick={() => router.push("/billing")}>Upgrade</Button>
+      });
+      return;
+    }
+
+    const rows = [
+      ["Persona", "Success", "Issue ID", "Impact", "Description", "WCAG Level"],
+    ];
+
+    rawTestRuns.forEach(run => {
+      if (run.accessibilityIssues.length === 0) {
+        rows.push([run.persona, run.success ? "YES" : "NO", "N/A", "N/A", "N/A", "N/A"]);
+      } else {
+        run.accessibilityIssues.forEach(issue => {
+          rows.push([
+            run.persona,
+            run.success ? "YES" : "NO",
+            issue.id,
+            issue.impact,
+            issue.description.replace(/,/g, ";"),
+            issue.wcagLevel || "N/A"
+          ]);
+        });
+      }
+    });
+
+    const csvContent = "data:text/csv;charset=utf-8," + rows.map(r => r.join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `DISA_Audit_${system?.name}_v${assessment?.version}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleEmailReport = async () => {
@@ -275,6 +318,10 @@ export default function AssessmentResultsPage() {
               </p>
             </div>
             <div className="flex gap-2">
+              <Button variant="outline" onClick={handleExportCSV}>
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV {!isPro && <Crown className="w-3 h-3 ml-1 text-accent" />}
+              </Button>
               <Button 
                 variant="outline" 
                 onClick={() => handleApplyFilter({...filters, onlyFailed: !filters.onlyFailed})}
@@ -318,7 +365,7 @@ export default function AssessmentResultsPage() {
               <CardContent className="h-[200px]">
                 <ChartContainer config={chartConfig}>
                   <BarChart data={scoreBreakdown} margin={{ top: 20, right: 30, left: 20, bottom: 0 }}>
-                    <CartGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis 
                       dataKey="name" 
                       axisLine={false} 
@@ -446,8 +493,3 @@ export default function AssessmentResultsPage() {
     </AuthGuard>
   );
 }
-
-function CartGrid({ vertical, ...props }: any) {
-  return <CartesianGrid vertical={vertical} {...props} />
-}
-

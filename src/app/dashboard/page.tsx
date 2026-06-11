@@ -5,7 +5,7 @@ import { useMemo, useState, useEffect } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useUser, useFirestore, useCollection } from "@/firebase";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, deleteDoc } from "firebase/firestore";
 import { AISystem, Assessment, UserProfile } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,13 +25,32 @@ import {
   TrendingDown,
   Minus,
   LayoutGrid,
-  List
+  List,
+  MoreVertical,
+  Trash2,
+  Edit
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { OnboardingModal } from "@/components/onboarding-modal";
 import { useToast } from "@/hooks/use-toast";
 import { loadUserPreferences, saveUserPreferences } from "@/lib/preferences";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function Dashboard() {
   const { user } = useUser();
@@ -39,6 +58,7 @@ export default function Dashboard() {
   const { toast } = useToast();
 
   const [dashboardView, setDashboardView] = useState<"grid" | "list">("grid");
+  const [deletingSystem, setDeletingSystem] = useState<string | null>(null);
 
   const systemsQuery = useMemo(() => {
     if (!db || !user) return null;
@@ -63,7 +83,6 @@ export default function Dashboard() {
           setUserProfile({ id: snap.id, ...snap.data() } as UserProfile);
         }
 
-        // Load preferences
         const prefs = await loadUserPreferences(user.uid);
         if (prefs?.dashboardView) {
           setDashboardView(prefs.dashboardView);
@@ -123,6 +142,18 @@ export default function Dashboard() {
     setDashboardView(nextView);
     if (user) {
       saveUserPreferences(user.uid, { dashboardView: nextView });
+    }
+  };
+
+  const handleDeleteSystem = async () => {
+    if (!deletingSystem || !db) return;
+    try {
+      await deleteDoc(doc(db, "ai_systems", deletingSystem));
+      toast({ title: "System Deleted", description: "The AI system has been removed from your workspace." });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Deletion Failed" });
+    } finally {
+      setDeletingSystem(null);
     }
   };
 
@@ -230,6 +261,21 @@ export default function Dashboard() {
                       </div>
 
                       <div className="flex gap-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                               <Link href={`/systems/${system.id}/edit`} className="cursor-pointer">
+                                 <Edit className="w-4 h-4 mr-2" /> Edit System
+                               </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive cursor-pointer" onClick={() => setDeletingSystem(system.id)}>
+                              <Trash2 className="w-4 h-4 mr-2" /> Delete System
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                         <Button variant="ghost" size="sm" asChild>
                           <Link href={`/systems/${system.id}/versions`}>History</Link>
                         </Button>
@@ -246,9 +292,26 @@ export default function Dashboard() {
                     <CardHeader className="pb-4">
                       <div className="flex justify-between items-start">
                         <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-wider">{system.type}</Badge>
-                        <Link href={system.url} target="_blank" className="text-muted-foreground hover:text-accent">
-                          <ExternalLink className="w-4 h-4" />
-                        </Link>
+                        <div className="flex gap-2">
+                          <Link href={system.url} target="_blank" className="text-muted-foreground hover:text-accent">
+                            <ExternalLink className="w-4 h-4" />
+                          </Link>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-6 w-6"><MoreVertical className="w-3 h-3" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem asChild>
+                                <Link href={`/systems/${system.id}/edit`} className="cursor-pointer">
+                                  <Edit className="w-4 h-4 mr-2" /> Edit
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive cursor-pointer" onClick={() => setDeletingSystem(system.id)}>
+                                <Trash2 className="w-4 h-4 mr-2" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
                       <CardTitle className="text-xl font-bold mt-2 truncate">{system.name}</CardTitle>
                       <CardDescription className="truncate text-xs">{system.url}</CardDescription>
@@ -328,6 +391,23 @@ export default function Dashboard() {
               </Card>
             )}
           </div>
+
+          <AlertDialog open={!!deletingSystem} onOpenChange={() => setDeletingSystem(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete the AI system and all associated audit reports. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteSystem} className="bg-destructive text-white hover:bg-destructive/90">
+                  Delete System
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </main>
       </div>
     </AuthGuard>

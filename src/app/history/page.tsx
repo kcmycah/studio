@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useFirestore, useUser } from "@/firebase";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, deleteDoc } from "firebase/firestore";
 import { AISystem, Assessment } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,64 +17,90 @@ import {
   Search,
   Calendar,
   Layers,
-  Loader2
+  Loader2,
+  Trash2
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 function HistoryContent() {
   const { user } = useUser();
   const db = useFirestore();
+  const { toast } = useToast();
   const searchParams = useSearchParams();
   const systemIdFilter = searchParams.get("system");
   
   const [assessments, setAssessments] = useState<(Assessment & { systemName: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    if (!user || !db) return;
+    setLoading(true);
+    try {
+      let q = query(
+        collection(db, "assessments"), 
+        where("userId", "==", user.uid)
+      );
+      const snap = await getDocs(q);
+      
+      const systemsSnap = await getDocs(query(collection(db, "ai_systems"), where("userId", "==", user.uid)));
+      const systemsMap = new Map(systemsSnap.docs.map(d => [d.id, (d.data() as AISystem).name]));
+
+      const results = snap.docs
+        .map(d => {
+          const data = d.data() as Assessment;
+          return {
+            id: d.id,
+            ...data,
+            systemName: systemsMap.get(data.systemId) || "Unknown System"
+          };
+        })
+        .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+
+      const filteredResults = systemIdFilter 
+        ? results.filter(a => a.systemId === systemIdFilter)
+        : results;
+      
+      setAssessments(filteredResults);
+    } catch (err) {
+      console.error("Error fetching history:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!user || !db) return;
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        // Fetch all assessments for user
-        let q = query(
-          collection(db, "assessments"), 
-          where("userId", "==", user.uid)
-        );
-        const snap = await getDocs(q);
-        
-        // Fetch all systems for user to map names
-        const systemsSnap = await getDocs(query(collection(db, "ai_systems"), where("userId", "==", user.uid)));
-        const systemsMap = new Map(systemsSnap.docs.map(d => [d.id, (d.data() as AISystem).name]));
-
-        const results = snap.docs
-          .map(d => {
-            const data = d.data() as Assessment;
-            return {
-              id: d.id,
-              ...data,
-              systemName: systemsMap.get(data.systemId) || "Unknown System"
-            };
-          })
-          .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
-
-        // Apply system-specific filter if present in URL
-        const filteredResults = systemIdFilter 
-          ? results.filter(a => a.systemId === systemIdFilter)
-          : results;
-        
-        setAssessments(filteredResults);
-      } catch (err) {
-        console.error("Error fetching history:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, [user, db, systemIdFilter]);
+
+  const handleDeleteAssessment = async () => {
+    if (!deletingId || !db) return;
+    try {
+      await deleteDoc(doc(db, "assessments", deletingId));
+      // We should also delete associated test runs, but for MVP we just remove the record
+      setAssessments(prev => prev.filter(a => a.id !== deletingId));
+      toast({ title: "Report Deleted" });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error deleting report" });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const filtered = assessments.filter(a => 
     a.systemName.toLowerCase().includes(filter.toLowerCase())
@@ -157,12 +184,16 @@ function HistoryContent() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" asChild className="font-bold">
-                        <Link href={`/assessments/${item.id}/results`}>
-                          <Eye className="w-4 h-4 mr-2" />
-                          View Report
-                        </Link>
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="sm" asChild className="font-bold">
+                          <Link href={`/assessments/${item.id}/results`}>
+                            <Eye className="w-4 h-4" />
+                          </Link>
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setDeletingId(item.id)} className="text-destructive hover:bg-destructive/10">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -185,6 +216,23 @@ function HistoryContent() {
             </Table>
           )}
         </Card>
+
+        <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this audit report?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently remove this assessment record from your history. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteAssessment} className="bg-destructive text-white hover:bg-destructive/90">
+                Delete Report
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );
