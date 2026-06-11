@@ -81,6 +81,7 @@
   main {
     margin: 0 !important;
     padding: 0 !important;
+    max-width: 100% !important;
   }
 
   .print\:p-0 {
@@ -88,11 +89,19 @@
   }
 
   .card {
-    border: none !important;
+    border: 1px solid #000 !important;
     box-shadow: none !important;
+  }
+
+  .prose, p {
+    color: black !important;
   }
 }
 
 .glass-morphism {
   @apply bg-card/70 backdrop-blur-md border border-border shadow-sm;
+}
+
+.break-words {
+  overflow-wrap: break-word;
 }
