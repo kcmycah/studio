@@ -170,7 +170,7 @@ export default function Dashboard() {
     <AuthGuard>
       <div className="flex min-h-screen bg-background text-foreground">
         <AppSidebar />
-        <main className="flex-1 md:ml-[260px] p-8 max-w-7xl mx-auto w-full relative">
+        <main className="flex-1 md:ml-[260px] p-8 pt-24 md:pt-8 max-w-7xl mx-auto w-full relative">
           <OnboardingModal />
           
           <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">

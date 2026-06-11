@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -100,7 +101,7 @@ export default function BillingPage() {
     <AuthGuard>
       <div className="flex min-h-screen bg-background">
         <AppSidebar />
-        <main className="flex-1 md:ml-[260px] p-8 max-w-6xl mx-auto w-full">
+        <main className="flex-1 md:ml-[260px] p-8 pt-24 md:pt-8 max-w-6xl mx-auto w-full">
           <header className="mb-12">
             <h1 className="text-4xl font-bold tracking-tight text-foreground">Billing & Plans</h1>
             <p className="text-muted-foreground mt-2 text-lg">Select the plan that fits your accessibility workflow.</p>

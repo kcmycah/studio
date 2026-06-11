@@ -79,7 +79,7 @@ export default function EditSystemPage() {
     <AuthGuard>
       <div className="flex min-h-screen bg-background">
         <AppSidebar />
-        <main className="flex-1 md:ml-[260px] p-8 flex flex-col items-center justify-start pt-20">
+        <main className="flex-1 md:ml-[260px] p-8 pt-24 md:pt-8 flex flex-col items-center justify-start">
           <div className="w-full max-w-2xl mb-6">
             <Button variant="ghost" onClick={() => router.back()} className="-ml-4">
               <ArrowLeft className="w-4 h-4 mr-2" /> Back

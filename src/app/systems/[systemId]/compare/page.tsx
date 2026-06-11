@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
@@ -85,7 +86,7 @@ function CompareContent() {
   return (
     <div className="flex min-h-screen bg-background">
       <AppSidebar />
-      <main className="flex-1 md:ml-[260px] p-8 max-w-7xl mx-auto w-full">
+      <main className="flex-1 md:ml-[260px] p-8 pt-24 md:pt-8 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between mb-10">
           <div>
             <Button variant="ghost" size="sm" asChild className="mb-4">

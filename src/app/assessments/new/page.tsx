@@ -162,7 +162,7 @@ function NewAssessmentContent() {
   return (
     <div className="flex min-h-screen bg-background">
       <AppSidebar />
-      <main className="flex-1 md:ml-[260px] p-8 max-w-5xl mx-auto w-full">
+      <main className="flex-1 md:ml-[260px] p-8 pt-24 md:pt-8 max-w-5xl mx-auto w-full">
         <header className="mb-10">
           <h1 className="text-3xl font-bold tracking-tight">New Assessment</h1>
           <p className="text-muted-foreground mt-1">Configure and launch a deterministic DISA audit.</p>

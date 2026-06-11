@@ -1,3 +1,4 @@
+
 "use client";
 
 import { AppSidebar } from "@/components/app-sidebar";
@@ -43,7 +44,7 @@ export default function HowItWorksPage() {
     <AuthGuard>
       <div className="flex min-h-screen bg-background">
         <AppSidebar />
-        <main className="flex-1 md:ml-[260px] p-8 max-w-5xl mx-auto w-full">
+        <main className="flex-1 md:ml-[260px] p-8 pt-24 md:pt-8 max-w-5xl mx-auto w-full">
           <header className="text-center mb-16 mt-8">
             <h1 className="text-4xl font-bold tracking-tight mb-6">The DISA Framework</h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">

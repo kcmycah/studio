@@ -189,7 +189,7 @@ export default function AssessmentResultsPage() {
     <AuthGuard>
       <div className="flex min-h-screen bg-background text-foreground">
         <AppSidebar />
-        <main className="flex-1 md:ml-[260px] p-8 max-w-6xl mx-auto w-full print:p-0 print:ml-0 overflow-x-hidden">
+        <main className="flex-1 md:ml-[260px] p-8 pt-24 md:pt-8 max-w-6xl mx-auto w-full print:p-0 print:ml-0 overflow-x-hidden">
           <div className="print:hidden mb-10 flex flex-col md:flex-row justify-between items-end gap-6">
             <div>
               <Button variant="ghost" asChild className="mb-4 -ml-4">

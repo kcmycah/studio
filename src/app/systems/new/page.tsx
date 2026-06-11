@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -91,7 +92,7 @@ export default function NewSystemPage() {
     <AuthGuard>
       <div className="flex min-h-screen bg-background text-foreground">
         <AppSidebar />
-        <main className="flex-1 md:ml-[260px] p-8 flex justify-center items-start pt-20">
+        <main className="flex-1 md:ml-[260px] p-8 pt-24 md:pt-8 flex justify-center items-start">
           <Card className="w-full max-w-2xl border-2 border-border">
             <CardHeader>
               <div className="flex items-center gap-2 mb-2">

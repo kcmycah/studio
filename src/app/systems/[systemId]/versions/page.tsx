@@ -70,7 +70,7 @@ export default function VersionHistoryPage() {
     <AuthGuard>
       <div className="flex min-h-screen bg-background">
         <AppSidebar />
-        <main className="flex-1 md:ml-[260px] p-8 max-w-5xl mx-auto w-full">
+        <main className="flex-1 md:ml-[260px] p-8 pt-24 md:pt-8 max-w-5xl mx-auto w-full">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
               <Button variant="ghost" size="sm" asChild className="mb-4">
