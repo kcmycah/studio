@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -18,12 +19,12 @@ const PLANS = [
     id: "free",
     name: "Free",
     price: "$0",
-    description: "For developers and small prototypes.",
+    description: "For individual developers and hobbyists.",
     features: [
       "Up to 2 AI systems",
       "Manual DISA audits",
-      "Deterministic summaries",
-      "Version history (last 2)",
+      "Standard summaries",
+      "Last 2 audit records",
       "Email results"
     ],
     buttonText: "Current Plan",
@@ -34,15 +35,15 @@ const PLANS = [
     name: "Pro",
     price: "$49",
     period: "/mo",
-    description: "For professional engineering teams.",
+    description: "For professional accessibility teams.",
     features: [
       "Up to 10 AI systems",
       "Unlimited version history",
-      "Any-version comparison",
-      "Advanced KPI filtering",
+      "Version comparison tool",
+      "KPI & Persona filtering",
       "Scheduled monitoring",
       "CSV Data Export",
-      "Priority email support"
+      "Priority support"
     ],
     buttonText: "Upgrade to Pro",
     variantId: "647281",
@@ -52,13 +53,13 @@ const PLANS = [
     id: "enterprise",
     name: "Enterprise",
     price: "Custom",
-    description: "For large scale compliance needs.",
+    description: "For organizations with scale needs.",
     features: [
       "Unlimited AI systems",
-      "API access to raw data",
-      "Team management",
-      "24/7 Account manager",
-      "Custom DISA weighting"
+      "Full API access",
+      "Team workspace",
+      "Account Manager",
+      "SLA Guarantees"
     ],
     buttonText: "Contact Sales",
     variantId: "647282"
@@ -76,17 +77,25 @@ export default function BillingPage() {
   useEffect(() => {
     if (!user || !db) return;
     const fetchProfile = async () => {
-      const snap = await getDoc(doc(db, "users", user.uid));
-      if (snap.exists()) {
-        setProfile({ id: snap.id, ...snap.data() } as UserProfile);
+      try {
+        const snap = await getDoc(doc(db, "users", user.uid));
+        if (snap.exists()) {
+          setProfile({ id: snap.id, ...snap.data() } as UserProfile);
+        }
+      } catch (err) {
+        console.error("Error fetching billing profile:", err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchProfile();
   }, [user, db]);
 
   const handleUpgrade = async (variantId: string, planName: string) => {
-    if (!user || !profile) return;
+    if (!user) {
+      toast({ variant: "destructive", title: "Authentication Error", description: "You must be signed in to upgrade." });
+      return;
+    }
     
     setCheckoutLoading(planName);
     try {
@@ -112,7 +121,6 @@ export default function BillingPage() {
         title: "Checkout Error",
         description: err.message
       });
-    } finally {
       setCheckoutLoading(null);
     }
   };
@@ -130,12 +138,13 @@ export default function BillingPage() {
         <main className="flex-1 md:ml-[260px] p-8 max-w-7xl mx-auto w-full">
           <header className="mb-12">
             <h1 className="text-3xl font-bold tracking-tight">Billing & Plans</h1>
-            <p className="text-muted-foreground mt-1">Scale your inclusivity with the right DISA framework tools.</p>
+            <p className="text-muted-foreground mt-1">Manage your subscription and unlock Pro features.</p>
           </header>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {PLANS.map((plan) => {
-              const isCurrent = (profile?.subscriptionStatus || 'free') === plan.id;
+              const currentStatus = profile?.subscriptionStatus || 'free';
+              const isCurrent = currentStatus === plan.id;
               
               return (
                 <Card key={plan.id} className={cn(
@@ -144,7 +153,7 @@ export default function BillingPage() {
                 )}>
                   {plan.highlight && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-[10px] font-bold uppercase px-3 py-1 rounded-full">
-                      Most Popular
+                      Recommended
                     </div>
                   )}
                   <CardHeader>
@@ -172,7 +181,7 @@ export default function BillingPage() {
                   </CardContent>
                   <CardFooter>
                     <Button 
-                      className="w-full" 
+                      className="w-full h-11" 
                       variant={plan.highlight ? "default" : "outline"}
                       disabled={plan.disabled || isCurrent || (!!checkoutLoading && checkoutLoading === plan.name)}
                       onClick={() => plan.variantId && handleUpgrade(plan.variantId, plan.name)}
@@ -187,11 +196,10 @@ export default function BillingPage() {
           </div>
 
           <div className="mt-16 bg-accent/5 rounded-2xl p-8 border border-accent/10">
-            <h2 className="text-xl font-bold mb-4">Merchant of Record Compliance</h2>
+            <h2 className="text-xl font-bold mb-4">Merchant of Record</h2>
             <p className="text-muted-foreground text-sm leading-relaxed max-w-3xl">
-              DISA Audit uses Lemon Squeezy as our Merchant of Record. This allows us to securely process 
-              payments globally (including Jamaica), handling all global tax compliance and 
-              regulatory requirements so you can focus on building inclusive AI.
+              DISA Audit processes payments through Lemon Squeezy, our global Merchant of Record. 
+              This ensures full tax compliance and secure processing for businesses globally, including Jamaica.
             </p>
           </div>
         </main>

@@ -2,12 +2,13 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { useAuth, useUser } from "@/firebase";
+import { useAuth, useUser, useFirestore } from "@/firebase";
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   sendPasswordResetEmail
 } from "firebase/auth";
+import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const auth = useAuth();
+  const db = useFirestore();
   const { user, loading: userLoading } = useUser();
 
   useEffect(() => {
@@ -42,7 +44,21 @@ export default function LoginPage() {
     setErrorHint(null);
     try {
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        // Create initial user profile
+        const userRef = doc(db, "users", userCredential.user.uid);
+        await setDoc(userRef, {
+          email: userCredential.user.email,
+          subscriptionStatus: "free",
+          createdAt: serverTimestamp(),
+          settings: {
+            emailResults: true,
+            scheduledMonitor: {
+              enabled: false,
+              frequency: "weekly"
+            }
+          }
+        });
         toast({ title: "Account Created", description: "Welcome to DISA Audit!" });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
@@ -52,13 +68,12 @@ export default function LoginPage() {
       let message = "An error occurred during authentication.";
       
       if (error.code === 'auth/network-request-failed') {
-        message = "Network request failed. This is often caused by an ad-blocker or missing authorized domain.";
-        setErrorHint("Troubleshooting: 1. Disable extensions like uBlock or AdBlock. 2. Check that your current domain is in Firebase Console > Authentication > Settings > Authorized Domains.");
-      } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
-        message = "Incorrect email or password. Please try again.";
+        message = "Network request failed. This is often caused by an ad-blocker.";
+        setErrorHint("Troubleshooting: Disable extensions like uBlock or AdBlock for this site.");
+      } else if (error.code === 'auth/invalid-credential') {
+        message = "Incorrect email or password.";
       } else if (error.code === 'auth/email-already-in-use') {
         message = "This email is already registered.";
-        setErrorHint("You already have an account! Please switch to 'Sign In'.");
         setIsSignUp(false);
       }
       
@@ -77,31 +92,23 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Email Required",
-        description: "Please enter your email address to receive a reset link.",
+        description: "Please enter your email address.",
       });
       return;
     }
 
     setResetLoading(true);
-    setErrorHint(null);
     try {
       await sendPasswordResetEmail(auth, email);
       toast({
         title: "Reset Link Sent",
-        description: `A password reset email has been sent to ${email}.`,
+        description: `Check your inbox at ${email}.`,
       });
     } catch (error: any) {
-      let message = "Could not send reset email.";
-      
-      if (error.code === 'auth/network-request-failed') {
-        message = "Network error. Please disable your ad-blocker and try again.";
-        setErrorHint("If you use extensions like uBlock Origin or AdGuard, click their icon in the browser toolbar and turn them 'Off' for this site, then refresh.");
-      }
-
       toast({
         variant: "destructive",
         title: "Reset Failed",
-        description: message,
+        description: error.message,
       });
     } finally {
       setResetLoading(false);
@@ -117,24 +124,23 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background p-4 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-background to-background">
-      <Card className="w-full max-w-md border-primary/20 glass-morphism shadow-2xl">
+    <div className="flex items-center justify-center min-h-screen bg-background p-4">
+      <Card className="w-full max-w-md border-primary/20 bg-card shadow-2xl">
         <CardHeader className="text-center space-y-4">
           <div className="mx-auto bg-primary/10 p-4 rounded-full w-fit">
             <ShieldCheck className="w-12 h-12 text-primary" />
           </div>
           <div className="space-y-1">
-            <CardTitle className="font-headline text-3xl">DISA Audit</CardTitle>
-            <CardDescription className="text-muted-foreground">
-              {isSignUp ? "Create your workspace" : "Welcome back to your dashboard"}
+            <CardTitle className="text-3xl font-bold">DISA Audit</CardTitle>
+            <CardDescription>
+              {isSignUp ? "Create your workspace" : "Sign in to your account"}
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {errorHint && (
-            <Alert className="bg-primary/5 border-primary/20 text-primary animate-in fade-in slide-in-from-top-1 duration-300">
+            <Alert className="bg-primary/5 border-primary/20 text-primary">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Troubleshooting Tip</AlertTitle>
               <AlertDescription className="text-xs">
                 {errorHint}
               </AlertDescription>
@@ -168,7 +174,7 @@ export default function LoginPage() {
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -178,16 +184,16 @@ export default function LoginPage() {
                 <div className="flex justify-end">
                   <button 
                     type="button" 
-                    className="text-xs text-muted-foreground hover:text-primary transition-colors underline-offset-4 hover:underline"
+                    className="text-xs text-muted-foreground hover:text-primary underline"
                     onClick={handleResetPassword}
                     disabled={resetLoading}
                   >
-                    {resetLoading ? "Sending..." : "Forgot password?"}
+                    Forgot password?
                   </button>
                 </div>
               )}
             </div>
-            <Button className="w-full h-12 text-lg font-medium shadow-lg shadow-primary/20" disabled={loading}>
+            <Button className="w-full h-12 text-lg font-medium bg-accent text-white" disabled={loading}>
               {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
               {isSignUp ? "Create Account" : "Sign In"}
             </Button>
@@ -197,10 +203,7 @@ export default function LoginPage() {
           <div className="text-sm text-center text-muted-foreground">
             {isSignUp ? "Already have an account?" : "Don't have an account yet?"}{" "}
             <button
-              onClick={() => {
-                setIsSignUp(!isSignUp);
-                setErrorHint(null);
-              }}
+              onClick={() => setIsSignUp(!isSignUp)}
               className="text-primary hover:underline font-bold"
             >
               {isSignUp ? "Sign In" : "Sign Up"}

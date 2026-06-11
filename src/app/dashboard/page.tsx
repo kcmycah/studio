@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -44,7 +45,7 @@ export default function Dashboard() {
 
   const { data: systems, loading: systemsLoading } = useCollection<AISystem>(systemsQuery);
   const [systemStats, setSystemStats] = useState<Record<string, { latest: Assessment, trend: number | null, count: number }>>({});
-  const [loadingLatest, setLoadingLatest] = useState(false);
+  const [loadingLatest, setLoadingLatest] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
@@ -64,7 +65,7 @@ export default function Dashboard() {
   }, [user, db]);
 
   useEffect(() => {
-    if (!systems || systems.length === 0 || !db || !user) {
+    if (!systems || !db || !user) {
       setLoadingLatest(false);
       return;
     }
@@ -74,7 +75,7 @@ export default function Dashboard() {
       try {
         const results: Record<string, { latest: Assessment, trend: number | null, count: number }> = {};
         
-        // Fetch assessments for all systems in one go to handle trending/counts more efficiently
+        // Fetch all assessments for user
         const allAssessmentsQuery = query(
           collection(db, "assessments"),
           where("userId", "==", user.uid)
@@ -99,18 +100,13 @@ export default function Dashboard() {
         setSystemStats(results);
       } catch (err: any) {
         console.error("Dashboard stats error:", err);
-        toast({
-          variant: "destructive",
-          title: "Dashboard Data Error",
-          description: "Failed to load latest assessment trends."
-        });
       } finally {
         setLoadingLatest(false);
       }
     };
 
     fetchData();
-  }, [systems, db, user, toast]);
+  }, [systems, db, user]);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-emerald-500";
@@ -131,7 +127,7 @@ export default function Dashboard() {
           <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Workspace</h1>
-              <p className="text-muted-foreground mt-1">Monitor inclusive AI compliance across your system inventory.</p>
+              <p className="text-muted-foreground mt-1">Audit and monitor your AI accessibility health.</p>
             </div>
             <div className="flex gap-3">
               <Button variant="outline" asChild disabled={systemLimitReached}>
@@ -156,11 +152,11 @@ export default function Dashboard() {
                   <Zap className="w-4 h-4 text-accent" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold">Free account limit reached</p>
-                  <p className="text-xs text-muted-foreground">You have reached the 2-system limit. Upgrade for unlimited auditing.</p>
+                  <p className="text-sm font-semibold">Free limit reached</p>
+                  <p className="text-xs text-muted-foreground">You can register up to 2 systems. Upgrade to unlock unlimited audits.</p>
                 </div>
               </div>
-              <Button size="sm" asChild variant="default" className="bg-accent text-white hover:bg-accent/90">
+              <Button size="sm" asChild className="bg-accent text-white hover:bg-accent/90">
                 <Link href="/billing">Upgrade Now</Link>
               </Button>
             </Card>
@@ -169,7 +165,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {systemsLoading ? (
                Array.from({ length: 3 }).map((_, i) => (
-                 <Card key={i} className="h-[300px] animate-pulse bg-muted/50 border-border" />
+                 <Card key={i} className="h-[320px] animate-pulse bg-muted/50 border-border" />
                ))
             ) : (
               systems?.map((system) => {
@@ -181,11 +177,11 @@ export default function Dashboard() {
                     <CardHeader className="pb-4">
                       <div className="flex justify-between items-start">
                         <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-wider">{system.type}</Badge>
-                        <Link href={system.url} target="_blank" className="text-muted-foreground hover:text-accent transition-colors">
+                        <Link href={system.url} target="_blank" className="text-muted-foreground hover:text-accent">
                           <ExternalLink className="w-4 h-4" />
                         </Link>
                       </div>
-                      <CardTitle className="text-xl font-bold mt-2">{system.name}</CardTitle>
+                      <CardTitle className="text-xl font-bold mt-2 truncate">{system.name}</CardTitle>
                       <CardDescription className="truncate text-xs">{system.url}</CardDescription>
                     </CardHeader>
                     
@@ -193,7 +189,7 @@ export default function Dashboard() {
                       {loadingLatest ? (
                         <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          <span className="text-xs">Fetching reports...</span>
+                          <span className="text-xs">Loading stats...</span>
                         </div>
                       ) : hasAssessment ? (
                         <div className="space-y-4">
@@ -217,13 +213,13 @@ export default function Dashboard() {
                           
                           <div className="flex justify-between text-[11px] text-muted-foreground font-medium">
                             <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {data.latest.createdAt.toDate().toLocaleDateString()}</span>
-                            <span className="flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5" /> {data.count} Audits</span>
+                            <span className="flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5" /> {data.count} Reports</span>
                           </div>
                         </div>
                       ) : (
                         <div className="py-12 text-center bg-muted/10 rounded-xl border border-dashed border-border flex flex-col items-center">
                           <Bot className="w-8 h-8 text-muted-foreground/30 mb-2" />
-                          <p className="text-xs text-muted-foreground">No assessments yet.</p>
+                          <p className="text-xs text-muted-foreground">No assessments run.</p>
                         </div>
                       )}
                     </CardContent>
@@ -237,7 +233,7 @@ export default function Dashboard() {
                       </Button>
                       <Button size="sm" className="flex-1 text-xs font-semibold bg-accent text-white" asChild>
                         <Link href={`/assessments/new?system=${system.id}`}>
-                          Run Test
+                          Run Audit
                           <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                         </Link>
                       </Button>
@@ -249,17 +245,15 @@ export default function Dashboard() {
 
             {!systemsLoading && systems?.length === 0 && (
               <Card className="col-span-full border-dashed border-2 py-20 text-center flex flex-col items-center justify-center bg-muted/5">
-                <div className="bg-primary/5 p-6 rounded-full mb-6">
-                  <Bot className="w-16 h-16 text-muted-foreground/40" />
-                </div>
-                <CardTitle className="text-2xl font-bold mb-2">Connect Your AI</CardTitle>
+                <Bot className="w-16 h-16 text-muted-foreground/30 mb-6" />
+                <CardTitle className="text-2xl font-bold mb-2">Welcome to DISA Audit</CardTitle>
                 <CardDescription className="mb-8 max-w-sm mx-auto">
-                  Start auditing your chatbot or voice assistant for accessibility compliance.
+                  Add your first AI system (Chatbot or Voice Assistant) to start measuring functional equity.
                 </CardDescription>
                 <Button size="lg" asChild className="bg-accent text-white px-8">
                   <Link href="/systems/new">
                     <Plus className="w-4 h-4 mr-2" />
-                    Register First System
+                    Register System
                   </Link>
                 </Button>
               </Card>
