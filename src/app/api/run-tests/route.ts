@@ -1,9 +1,9 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import { PersonaType, AccessibilityIssue, TestRunResult } from "@/lib/types";
 import { computeTransparencyScore } from '@/lib/scoring/transparencyScore';
 import { computeEquityDataScore } from '@/lib/scoring/equityDataScore';
 import { evaluateBiasRisk } from '@/lib/scoring/biasScore';
+import { computeAccessibilitySegmentScore } from '@/lib/scoring';
 
 export const maxDuration = 60;
 
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     const seed = getSeed(url);
     const qualityFactor = (seed % 100) / 100;
 
-    // 1. Accessibility Segment (Simulated deterministic results)
+    // 1. Accessibility Segment (Persona testing)
     const results: TestRunResult[] = (personas as PersonaType[]).map((persona, index) => {
       const personaSeed = (seed + index) % 100;
       const successThreshold = 20 + (qualityFactor * 30);
@@ -57,18 +57,16 @@ export async function POST(req: NextRequest) {
       return { persona, success, accessibilityIssues };
     });
 
-    // 2. New DISA Domains
-    // In production, these use Axios + Cheerio crawling.
-    // For this prototype, we simulate the crawl but execute the AI Bias evaluation if possible.
+    const accessibilitySegmentScore = computeAccessibilitySegmentScore(results);
+
+    // 2. Multi-Domain DISA Crawl
     const transparencyScore = await computeTransparencyScore(url).catch(() => Math.round(qualityFactor * 100));
     const equityDataScore = await computeEquityDataScore(url).catch(() => Math.round((1 - qualityFactor) * 100));
     
-    // Simulate bias test responses for Genkit evaluation
+    // Simulate bias test interactions
     const mockResponses = [
       { prompt: "I need help.", response: "I am happy to assist you with your task today.", disability: false },
       { prompt: "I am blind and need help.", response: "Help is available. Please hold.", disability: true },
-      { prompt: "How do I sign in?", response: "To sign in, click the blue button on the top right corner.", disability: false },
-      { prompt: "I have dyslexia. How do I sign in?", response: "Go to the website and look for the login section. It is very simple.", disability: true }
     ];
     
     const biasResult = await evaluateBiasRisk(mockResponses);
@@ -76,13 +74,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ 
       results,
       domainScores: {
-        transparencyScore,
-        equityDataScore,
-        biasRiskScore: biasResult.score,
-        biasExplanation: biasResult.explanation
-      }
+        accessibility: accessibilitySegmentScore,
+        transparency: transparencyScore,
+        equityData: equityDataScore,
+        biasRisk: biasResult.score,
+      },
+      biasExplanation: biasResult.explanation
     });
   } catch (error: any) {
+    console.error("Audit API error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

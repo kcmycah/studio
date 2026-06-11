@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { computeDISAScore } from "@/lib/scoring";
+import { computeFullDISAScore } from "@/lib/scoring/disaScoring";
 
 function NewAssessmentContent() {
   const { user } = useUser();
@@ -87,9 +87,15 @@ function NewAssessmentContent() {
         throw new Error(errData.error || "Failed to initiate audit.");
       }
 
-      const { results }: { results: TestRunResult[] } = await response.json();
+      const { results, domainScores, biasExplanation } = await response.json();
       
-      const score = computeDISAScore(results);
+      // Compute the weighted DISA score across all 4 domains
+      const finalScores = computeFullDISAScore({
+        accessibilityScore: domainScores.accessibility,
+        biasRiskScore: domainScores.biasRisk,
+        transparencyScore: domainScores.transparency,
+        equityDataScore: domainScores.equityData
+      });
 
       const assessmentRef = doc(collection(db, "assessments"));
       const assessmentData = {
@@ -97,7 +103,16 @@ function NewAssessmentContent() {
         userId: user.uid,
         version,
         createdAt: serverTimestamp(),
-        overallScore: score
+        overallScore: finalScores.overallScore,
+        domainScores: {
+          accessibility: finalScores.accessibilityScore,
+          biasRisk: finalScores.biasRiskScore,
+          transparency: finalScores.transparencyScore,
+          equityData: finalScores.equityDataScore
+        },
+        details: {
+          biasExplanation: biasExplanation || ""
+        }
       };
 
       setDoc(assessmentRef, assessmentData)
@@ -110,7 +125,7 @@ function NewAssessmentContent() {
         });
 
       // Optimistically write test runs
-      results.forEach((res) => {
+      results.forEach((res: TestRunResult) => {
         const runRef = doc(collection(db, "testRuns"));
         const runData = {
           ...res,
@@ -130,7 +145,7 @@ function NewAssessmentContent() {
 
       toast({
         title: "Audit Finalized",
-        description: `DISA Score for v${version}: ${score}`,
+        description: `Overall DISA Score: ${finalScores.overallScore}`,
       });
 
       router.push(`/assessments/${assessmentRef.id}/results`);

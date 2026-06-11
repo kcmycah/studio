@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
@@ -94,11 +93,11 @@ export default function AssessmentResultsPage() {
 
   const domainScores = useMemo(() => {
     if (!assessment) return [];
-    const data = (assessment as any).domainScores || {
+    const data = assessment.domainScores || {
       accessibility: assessment.overallScore,
-      biasRisk: 85,
-      transparency: 70,
-      equityData: 65
+      biasRisk: 0,
+      transparency: 0,
+      equityData: 0
     };
     
     return [
@@ -191,7 +190,6 @@ export default function AssessmentResultsPage() {
       if (data.media) {
         setAudioUrl(data.media);
         setIsPlaying(true);
-        // Audio will play via the ref effect or manually
         setTimeout(() => audioRef.current?.play(), 100);
       }
     } catch (err) {
@@ -265,7 +263,6 @@ export default function AssessmentResultsPage() {
       <div className="flex min-h-screen bg-background">
         <AppSidebar />
         <main className="flex-1 md:ml-[260px] p-8 max-w-7xl mx-auto w-full">
-          {/* Audio element handled safely - null src is preferred by Next.js/Browser over "" */}
           {audioUrl && (
             <audio 
               ref={audioRef} 
@@ -304,7 +301,6 @@ export default function AssessmentResultsPage() {
             </div>
           </div>
 
-          {/* Score Header Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
             <Card className="p-8 flex flex-col items-center justify-center text-center bg-accent/5 border-accent/20">
               <p className="text-xs font-bold uppercase tracking-widest text-accent mb-2">Overall DISA Score</p>
@@ -315,7 +311,7 @@ export default function AssessmentResultsPage() {
                  <span className="text-2xl font-bold text-muted-foreground absolute -top-2 -right-12">/ 100</span>
               </div>
               <Badge variant="outline" className="mt-4 bg-background px-4 py-1">
-                Weighted Average
+                Weighted Framework
               </Badge>
             </Card>
 
@@ -340,12 +336,8 @@ export default function AssessmentResultsPage() {
             </Card>
           </div>
 
-          {/* AI Insights and KPIs */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
             <Card className="lg:col-span-2 border-accent/20 shadow-lg relative overflow-hidden flex flex-col">
-              <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                <Sparkles className="w-32 h-32 text-accent" />
-              </div>
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-accent" /> 
@@ -376,23 +368,13 @@ export default function AssessmentResultsPage() {
                   </div>
                 ) : aiSummary ? (
                   <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-500">
-                    <p className="text-lg leading-relaxed font-medium text-foreground/90">
+                    <p className="text-lg leading-relaxed font-medium text-foreground/90 whitespace-pre-wrap">
                       {aiSummary}
                     </p>
-                    <div className="bg-accent/5 p-4 rounded-xl border border-accent/10">
-                      <p className="font-bold text-[10px] text-accent uppercase mb-1">Remediation Path</p>
-                      <p className="text-sm italic text-muted-foreground">
-                        Gemini recommendation: Focus on resolving WCAG Level A blockages for {rawTestRuns.find(r => !r.success)?.persona || 'impacted'} personas to restore functional equity.
-                      </p>
-                    </div>
                   </div>
                 ) : (
                   <div className="py-12 text-center bg-muted/10 rounded-xl border border-dashed flex flex-col items-center justify-center space-y-4">
                     <BrainCircuit className="w-10 h-10 text-muted-foreground/30" />
-                    <div className="space-y-1">
-                      <p className="font-bold text-sm">Deep Audit Analysis Ready</p>
-                      <p className="text-xs text-muted-foreground">Let AI generate a concise summary for your stakeholders.</p>
-                    </div>
                     <Button onClick={handleGenerateAiSummary} className="bg-accent text-white">Generate Analysis</Button>
                   </div>
                 )}
@@ -415,25 +397,18 @@ export default function AssessmentResultsPage() {
                     <p className="text-2xl font-black text-destructive">{kpis.criticalCount}</p>
                   </div>
                 </div>
-                <div className="mt-6 pt-6 border-t space-y-4">
-                   <div className="flex justify-between items-center text-xs">
-                     <span className="font-medium text-muted-foreground">WCAG Level A</span>
-                     <Badge variant="outline" className="h-5 px-2 bg-destructive/5 text-destructive border-destructive/20">{kpis.totalA}</Badge>
-                   </div>
-                   <div className="flex justify-between items-center text-xs">
-                     <span className="font-medium text-muted-foreground">WCAG Level AA</span>
-                     <Badge variant="outline" className="h-5 px-2 bg-amber-500/5 text-amber-500 border-amber-500/20">{kpis.totalAA}</Badge>
-                   </div>
-                   <div className="flex justify-between items-center text-xs">
-                     <span className="font-medium text-muted-foreground">WCAG Level AAA</span>
-                     <Badge variant="outline" className="h-5 px-2 bg-emerald-500/5 text-emerald-500 border-emerald-500/20">{kpis.totalAAA}</Badge>
-                   </div>
-                </div>
+                {assessment?.details?.biasExplanation && (
+                  <div className="mt-6 pt-6 border-t">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase mb-2">Bias Risk Insights</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed italic line-clamp-4">
+                      {assessment.details.biasExplanation}
+                    </p>
+                  </div>
+                )}
               </Card>
             </div>
           </div>
 
-          {/* Persona Mapping */}
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
             <FileText className="w-6 h-6 text-accent" />
             Persona Success Mapping
@@ -448,9 +423,6 @@ export default function AssessmentResultsPage() {
                     </div>
                     <span className="font-bold text-sm">{run.persona}</span>
                   </div>
-                  <Badge variant={run.success ? "secondary" : "outline"} className="text-[9px] h-5">
-                    {run.success ? 'Accommodated' : 'Blocked'}
-                  </Badge>
                 </div>
                 
                 {run.accessibilityIssues.length > 0 ? (
