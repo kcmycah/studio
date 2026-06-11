@@ -145,7 +145,8 @@ export default function AssessmentResultsPage() {
 
   const topIssues = useMemo(() => {
     const issuesMap = new Map<string, { impact: string; count: number; description: string }>();
-    filteredRuns.forEach(run => {
+    // Use raw runs for top issues to keep the summary consistent even when filtered
+    rawTestRuns.forEach(run => {
       run.accessibilityIssues.forEach(issue => {
         const existing = issuesMap.get(issue.id);
         if (existing) existing.count += 1;
@@ -156,12 +157,12 @@ export default function AssessmentResultsPage() {
       .map(([id, data]) => ({ id, ...data }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
-  }, [filteredRuns]);
+  }, [rawTestRuns]);
 
   const summary = useMemo(() => {
-    if (!assessment || filteredRuns.length === 0) return null;
-    return generateExecutiveSummary(assessment.overallScore, filteredRuns, topIssues);
-  }, [assessment, filteredRuns, topIssues]);
+    if (!assessment || rawTestRuns.length === 0) return null;
+    return generateExecutiveSummary(assessment.overallScore, rawTestRuns, topIssues);
+  }, [assessment, rawTestRuns, topIssues]);
 
   const scoreBreakdown = useMemo(() => {
     if (!assessment) return [];
@@ -304,7 +305,7 @@ export default function AssessmentResultsPage() {
       <div className="flex min-h-screen bg-background">
         <AppSidebar />
         <main className="flex-1 md:ml-[260px] p-8 max-w-7xl mx-auto w-full">
-          <audio ref={audioRef} src={audioUrl || ""} onEnded={() => setIsPlaying(false)} />
+          {audioUrl && <audio ref={audioRef} src={audioUrl} onEnded={() => setIsPlaying(false)} />}
 
           <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
             <div>
@@ -397,11 +398,17 @@ export default function AssessmentResultsPage() {
                 </Button>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-lg leading-relaxed text-foreground/90 font-medium">{summary?.text}</p>
-                <div className="bg-accent/5 p-6 rounded-xl border border-accent/10">
-                  <p className="font-bold text-xs text-accent uppercase mb-2">Professional Recommendation</p>
-                  <p className="italic text-muted-foreground leading-relaxed">{summary?.recommendation}</p>
-                </div>
+                {summary ? (
+                  <>
+                    <p className="text-lg leading-relaxed text-foreground/90 font-medium">{summary.text}</p>
+                    <div className="bg-accent/5 p-6 rounded-xl border border-accent/10">
+                      <p className="font-bold text-xs text-accent uppercase mb-2">Professional Recommendation</p>
+                      <p className="italic text-muted-foreground leading-relaxed">{summary.recommendation}</p>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground italic">Generating summary findings...</p>
+                )}
               </CardContent>
             </Card>
 
