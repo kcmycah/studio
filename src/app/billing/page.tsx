@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -9,10 +8,10 @@ import { doc, getDoc } from "firebase/firestore";
 import { UserProfile } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Check, Zap, Shield, Crown, Loader2 } from "lucide-react";
+import { Check, Zap, Shield, Crown, Loader2, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const PLANS = [
   {
@@ -137,56 +136,59 @@ export default function BillingPage() {
         <AppSidebar />
         <main className="flex-1 md:ml-[260px] p-8 max-w-7xl mx-auto w-full">
           <header className="mb-12">
-            <h1 className="text-3xl font-bold tracking-tight">Billing & Plans</h1>
-            <p className="text-muted-foreground mt-1">Manage your subscription and unlock Pro features.</p>
+            <h1 className="text-4xl font-bold tracking-tight">Billing & Plans</h1>
+            <p className="text-muted-foreground mt-2 text-lg">Manage your subscription and unlock Pro features.</p>
           </header>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
             {PLANS.map((plan) => {
               const currentStatus = profile?.subscriptionStatus || 'free';
               const isCurrent = currentStatus === plan.id;
               
               return (
                 <Card key={plan.id} className={cn(
-                  "flex flex-col relative",
-                  plan.highlight && "border-accent ring-1 ring-accent/20 shadow-lg"
+                  "flex flex-col relative border-2 transition-all",
+                  plan.highlight ? "border-accent shadow-xl scale-[1.02] z-10" : "border-border shadow-sm hover:border-accent/30"
                 )}>
                   {plan.highlight && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-[10px] font-bold uppercase px-3 py-1 rounded-full">
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-accent text-white text-[10px] font-bold uppercase px-4 py-1 rounded-full shadow-lg">
                       Recommended
                     </div>
                   )}
                   <CardHeader>
-                    <CardTitle className="text-xl flex items-center gap-2">
-                      {plan.id === 'free' && <Zap className="w-5 h-5 text-muted-foreground" />}
-                      {plan.id === 'pro' && <Crown className="w-5 h-5 text-accent" />}
-                      {plan.id === 'enterprise' && <Shield className="w-5 h-5 text-emerald-500" />}
+                    <CardTitle className="text-2xl flex items-center gap-2">
+                      {plan.id === 'free' && <Zap className="w-6 h-6 text-muted-foreground" />}
+                      {plan.id === 'pro' && <Crown className="w-6 h-6 text-accent" />}
+                      {plan.id === 'enterprise' && <Shield className="w-6 h-6 text-emerald-500" />}
                       {plan.name}
                     </CardTitle>
-                    <div className="flex items-baseline gap-1 mt-4">
-                      <span className="text-4xl font-bold">{plan.price}</span>
-                      {plan.period && <span className="text-muted-foreground">{plan.period}</span>}
+                    <div className="flex items-baseline gap-1 mt-6">
+                      <span className="text-5xl font-black">{plan.price}</span>
+                      {plan.period && <span className="text-muted-foreground text-lg">{plan.period}</span>}
                     </div>
-                    <CardDescription className="mt-2">{plan.description}</CardDescription>
+                    <CardDescription className="mt-4 text-base">{plan.description}</CardDescription>
                   </CardHeader>
-                  <CardContent className="flex-grow">
-                    <ul className="space-y-3">
+                  <CardContent className="flex-grow pt-6 border-t border-border/50">
+                    <ul className="space-y-4">
                       {plan.features.map((feature, i) => (
-                        <li key={i} className="flex items-start gap-3 text-sm">
-                          <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                        <li key={i} className="flex items-start gap-3 text-sm font-medium">
+                          <Check className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
                           <span>{feature}</span>
                         </li>
                       ))}
                     </ul>
                   </CardContent>
-                  <CardFooter>
+                  <CardFooter className="pt-8">
                     <Button 
-                      className="w-full h-11" 
+                      className={cn(
+                        "w-full h-12 text-lg font-bold transition-all",
+                        plan.highlight ? "bg-accent text-white hover:bg-accent/90" : "variant-outline"
+                      )} 
                       variant={plan.highlight ? "default" : "outline"}
                       disabled={plan.disabled || isCurrent || (!!checkoutLoading && checkoutLoading === plan.name)}
                       onClick={() => plan.variantId && handleUpgrade(plan.variantId, plan.name)}
                     >
-                      {checkoutLoading === plan.name ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      {checkoutLoading === plan.name ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
                       {isCurrent ? "Current Plan" : plan.buttonText}
                     </Button>
                   </CardFooter>
@@ -195,12 +197,17 @@ export default function BillingPage() {
             })}
           </div>
 
-          <div className="mt-16 bg-accent/5 rounded-2xl p-8 border border-accent/10">
-            <h2 className="text-xl font-bold mb-4">Merchant of Record</h2>
-            <p className="text-muted-foreground text-sm leading-relaxed max-w-3xl">
-              DISA Audit processes payments through Lemon Squeezy, our global Merchant of Record. 
-              This ensures full tax compliance and secure processing for businesses globally, including Jamaica.
-            </p>
+          <div className="bg-accent/5 rounded-3xl p-10 border border-accent/10 flex flex-col md:flex-row items-center gap-8">
+            <div className="bg-white dark:bg-accent/20 p-6 rounded-2xl shadow-inner">
+               <Shield className="w-12 h-12 text-accent" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold mb-2">Merchant of Record</h2>
+              <p className="text-muted-foreground text-lg leading-relaxed max-w-4xl">
+                DISA Audit processes payments through <strong>Lemon Squeezy</strong>, our global Merchant of Record. 
+                This ensures secure processing and full tax compliance for businesses worldwide, including our partners in Jamaica.
+              </p>
+            </div>
           </div>
         </main>
       </div>
