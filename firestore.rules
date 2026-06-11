@@ -11,7 +11,8 @@ service cloud.firestore {
     // AI systems
     match /ai_systems/{doc} {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow write: if request.auth != null && (request.auth.uid == resource.data.userId || request.auth.uid == request.resource.data.userId);
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
     // Assessments
@@ -22,10 +23,12 @@ service cloud.firestore {
          (resource.data.systemId != null && isSystemOwner(resource.data.systemId)));
       
       // Allow collection queries only if filtered by userId
+      allow list: if request.auth != null && request.auth.uid == request.query.limit > 0 || resource.data.userId == request.auth.uid;
+      // Fixed list rule to be simpler for query verification
       allow list: if request.auth != null && resource.data.userId == request.auth.uid;
       
-      allow write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
     // Test runs
@@ -39,8 +42,8 @@ service cloud.firestore {
       // Allow collection queries only if filtered by userId
       allow list: if request.auth != null && resource.data.userId == request.auth.uid;
       
-      allow write: if request.auth != null && (request.auth.uid == resource.data.userId || request.auth.uid == request.resource.data.userId);
-      allow create: if request.auth != null && (request.auth.uid == request.resource.data.userId || request.auth.uid == resource.data.userId);
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
     // User preferences
@@ -54,7 +57,7 @@ service cloud.firestore {
       allow read: if false; 
     }
 
-    // Catch-all for other users data
+    // Catch-all for user profiles
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
