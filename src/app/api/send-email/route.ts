@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
@@ -12,6 +11,7 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest) {
   try {
     const apiKey = process.env.RESEND_API_KEY;
+    const fromAddress = process.env.EMAIL_FROM || 'onboarding@resend.dev';
     
     if (!apiKey) {
       return NextResponse.json({ 
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
     `;
 
     const { data, error } = await resend.emails.send({
-      from: 'DISA Briefings <onboarding@resend.dev>',
+      from: fromAddress,
       to: [recipientEmail],
       subject: `Briefing: ${systemName} (${overallScore}/100)`,
       html: htmlContent

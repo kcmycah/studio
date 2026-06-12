@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 
@@ -9,6 +8,7 @@ import { Resend } from "resend";
 export async function POST(req: NextRequest) {
   try {
     const apiKey = process.env.RESEND_API_KEY;
+    const fromAddress = process.env.EMAIL_FROM || 'onboarding@resend.dev';
     
     if (!apiKey) {
       console.error("Missing RESEND_API_KEY");
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     // High-contrast, executive styled HTML template
     const { data, error } = await resend.emails.send({
-      from: "DISA Executive Reports <onboarding@resend.dev>",
+      from: fromAddress,
       to: [email],
       subject: `Executive Briefing: ${systemName} v${version}`,
       html: `
