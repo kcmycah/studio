@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -258,7 +257,7 @@ export default function AssessmentResultsPage() {
             </div>
           </div>
 
-          <Card className="shadow-2xl border-2 border-border overflow-hidden print:shadow-none print:border-none bg-white text-black min-h-[1100px] flex flex-col transition-all">
+          <Card className="shadow-2xl border-2 border-border overflow-hidden print:shadow-none print:border-none bg-white text-black min-h-[1100px] print:min-h-0 flex flex-col transition-all">
             <header className="bg-black text-white p-10 md:p-14 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
               <div className="space-y-3 max-w-full">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Compliance Disclosure</p>

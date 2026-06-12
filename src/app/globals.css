@@ -74,7 +74,9 @@
   aside,
   nav,
   button,
-  .toaster {
+  .toaster,
+  .dropdown-menu,
+  .alert-dialog {
     display: none !important;
   }
   
@@ -93,9 +95,9 @@
     padding: 0 !important;
     max-width: 100% !important;
     width: 100% !important;
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
   }
 
   /* Optimize Card for full-page PDF */
@@ -107,6 +109,7 @@
     margin: 0 !important;
     padding: 0 !important;
     border-radius: 0 !important;
+    page-break-after: avoid;
   }
 
   /* Force headers to maintain their colors */
@@ -120,7 +123,7 @@
     color: black !important;
   }
 
-  header h2, header p, header span {
+  header h2, header p, header span, header div {
     color: white !important;
   }
 
@@ -148,6 +151,14 @@
   /* Break points for clean PDF pages */
   section {
     page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 2rem !important;
+  }
+
+  .accordion-content {
+    display: block !important;
+    height: auto !important;
+    opacity: 1 !important;
   }
 }
 
