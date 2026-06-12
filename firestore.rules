@@ -12,7 +12,7 @@ service cloud.firestore {
       return request.auth != null && get(/databases/$(database)/documents/ai_systems/$(systemId)).data.userId == request.auth.uid;
     }
 
-    // AI systems
+    // AI systems - Top-level user owned
     match /ai_systems/{systemId} {
       allow read, write, delete: if isOwner(resource.data.userId);
       allow create: if request.auth != null && isOwner(request.resource.data.userId);
