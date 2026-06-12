@@ -20,7 +20,9 @@ service cloud.firestore {
       // Assessments subcollection – restricted via parent system ownership
       match /assessments/{assessmentId} {
         allow read, write, delete: if isSystemOwner(systemId);
-        allow create: if request.auth != null && isOwner(request.resource.data.userId) && request.resource.data.systemId == systemId;
+        allow create: if request.auth != null && 
+          isOwner(request.resource.data.userId) && 
+          request.resource.data.systemId == systemId;
       }
     }
 

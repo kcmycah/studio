@@ -45,12 +45,15 @@ export function useCollection<T = DocumentData>(
       let allConstraints = [...constraints];
       
       // Automatic scoping for top-level user-owned collections
-      const protectedTopLevel = ['ai_systems', 'testRuns', 'feedback'];
+      const protectedTopLevel = ['ai_systems', 'testRuns', 'feedback', 'user_preferences'];
+      
+      // We check if the path is one of the protected top-level collections
       if (protectedTopLevel.includes(path)) {
+        // Ensure the query only looks at the current user's documents
         allConstraints.push(where('userId', '==', user.uid));
       }
 
-      // Add a safety limit if none exists
+      // Add a safety limit if none exists to keep performance high
       if (!constraints.some(c => c.toString().includes('limit'))) {
         allConstraints.push(firestoreLimit(100));
       }
@@ -84,7 +87,7 @@ export function useCollection<T = DocumentData>(
         setLoading(false);
       },
       async (err) => {
-        console.error(`[useCollection] Snapshot error for ${path}:`, err);
+        // Surface rich contextual errors for security rule violations
         const permissionError = new FirestorePermissionError({
           path: path || 'unknown',
           operation: 'list',
