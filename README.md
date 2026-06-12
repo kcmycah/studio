@@ -1,4 +1,3 @@
-
 # AuditAccess - Inclusive AI Audit Pipeline
 
 AuditAccess is a professional platform for auditing AI systems for accessibility and fairness using the **DISA (Disability-Inclusive System Assessment)** framework.
