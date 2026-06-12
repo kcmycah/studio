@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
@@ -35,8 +34,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 function HistoryContent() {
   const { user } = useUser();
@@ -48,66 +45,57 @@ function HistoryContent() {
   const [assessments, setAssessments] = useState<(Assessment & { systemName: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const fetchData = async () => {
-    if (!user || !db) return;
-    setLoading(true);
-    
-    // Security rules require explicit limit and userId filter for collection queries
-    const assessmentsQuery = query(
-      collection(db, "assessments"), 
-      where("userId", "==", user.uid),
-      orderBy("createdAt", "desc"),
-      limit(100)
-    );
-
-    const systemsQuery = query(
-      collection(db, "ai_systems"), 
-      where("userId", "==", user.uid)
-    );
-
-    Promise.all([
-      getDocs(assessmentsQuery),
-      getDocs(systemsQuery)
-    ]).then(([assessmentsSnap, systemsSnap]) => {
-      const systemsMap = new Map(systemsSnap.docs.map(d => [d.id, (d.data() as AISystem).name]));
-
-      const results = assessmentsSnap.docs
-        .map(d => {
-          const data = d.data() as Assessment;
-          return {
-            id: d.id,
-            ...data,
-            systemName: systemsMap.get(data.systemId) || "Unknown System"
-          };
-        });
-      
-      const filteredResults = systemIdFilter 
-        ? results.filter(a => a.systemId === systemIdFilter)
-        : results;
-      
-      setAssessments(filteredResults);
-    }).catch(async (error) => {
-      console.error("History fetch error:", error);
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: 'assessments',
-        operation: 'list'
-      }));
-    }).finally(() => {
-      setLoading(false);
-    });
-  };
+  const [deletingId, setDeletingId] = useState<{systemId: string, id: string} | null>(null);
 
   useEffect(() => {
+    if (!user || !db) return;
+    
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const systemsQuery = query(
+          collection(db, "ai_systems"), 
+          where("userId", "==", user.uid)
+        );
+        const systemsSnap = await getDocs(systemsQuery);
+        const systems = systemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as AISystem));
+        
+        const allAssessments: (Assessment & { systemName: string })[] = [];
+        
+        for (const system of systems) {
+          if (systemIdFilter && system.id !== systemIdFilter) continue;
+          
+          const assessmentQuery = query(
+            collection(db, "ai_systems", system.id, "assessments"),
+            orderBy("createdAt", "desc"),
+            limit(50)
+          );
+          const assessmentSnap = await getDocs(assessmentQuery);
+          assessmentSnap.forEach(doc => {
+            allAssessments.push({
+              id: doc.id,
+              ...doc.data() as Assessment,
+              systemName: system.name
+            });
+          });
+        }
+        
+        setAssessments(allAssessments.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
+      } catch (error) {
+        console.error("History fetch error:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchData();
   }, [user, db, systemIdFilter]);
 
   const handleDeleteAssessment = async () => {
     if (!deletingId || !db) return;
     try {
-      await deleteDoc(doc(db, "assessments", deletingId));
-      setAssessments(prev => prev.filter(a => a.id !== deletingId));
+      await deleteDoc(doc(db, "ai_systems", deletingId.systemId, "assessments", deletingId.id));
+      setAssessments(prev => prev.filter(a => a.id !== deletingId.id));
       toast({ title: "Report Deleted" });
     } catch (err) {
       toast({ variant: "destructive", title: "Error deleting report" });
@@ -121,44 +109,34 @@ function HistoryContent() {
   );
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div className="flex min-h-screen bg-background">
       <AppSidebar />
       <main className="flex-1 md:ml-[260px] p-8 pt-24 md:pt-8 max-w-7xl mx-auto w-full">
-        <header className="mb-10">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Audit History</h1>
-              <p className="text-muted-foreground mt-1">
-                {systemIdFilter ? "Showing reports for selected system" : "Review and manage past accessibility performance records."}
-              </p>
-            </div>
-            {systemIdFilter && (
-              <Button variant="ghost" asChild className="font-bold">
-                <Link href="/history">Clear Filter</Link>
-              </Button>
-            )}
+        <header className="mb-10 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Audit History</h1>
+            <p className="text-muted-foreground mt-1">Review your inclusive performance records.</p>
           </div>
+          {systemIdFilter && <Button variant="ghost" asChild><Link href="/history">Clear Filter</Link></Button>}
         </header>
 
-        <Card className="shadow-sm mb-8">
-          <CardContent className="p-4 flex flex-col md:flex-row gap-4 items-center">
-            <div className="relative flex-grow w-full">
-              <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search by system name..." 
-                className="pl-10 h-11" 
-                value={filter}
-                onChange={e => setFilter(e.target.value)}
-              />
-            </div>
-          </CardContent>
+        <Card className="shadow-sm mb-8 p-4 flex gap-4 items-center">
+          <div className="relative flex-grow">
+            <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+            <Input 
+              placeholder="Search by system name..." 
+              className="pl-10 h-11" 
+              value={filter}
+              onChange={e => setFilter(e.target.value)}
+            />
+          </div>
         </Card>
 
         <Card className="shadow-sm overflow-hidden">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
               <Loader2 className="w-8 h-8 animate-spin mb-4 text-accent" />
-              <p className="text-sm font-medium">Loading history records...</p>
+              <p>Loading history records...</p>
             </div>
           ) : (
             <Table>
@@ -173,58 +151,38 @@ function HistoryContent() {
               </TableHeader>
               <TableBody>
                 {filtered.map((item) => (
-                  <TableRow key={item.id} className="hover:bg-accent/5 transition-colors">
+                  <TableRow key={item.id} className="hover:bg-accent/5">
                     <TableCell className="font-bold">
                       <div className="flex items-center gap-2">
                         <Layers className="w-4 h-4 text-accent" />
-                        <span className="truncate max-w-[200px]">{item.systemName}</span>
+                        <span>{item.systemName}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs font-medium">
-                      {item.createdAt?.toDate?.().toLocaleDateString() || "Pending..."}
+                      {item.createdAt?.toDate?.().toLocaleDateString() || "N/A"}
                     </TableCell>
                     <TableCell>
-                       <span className={cn("text-2xl font-black", 
-                         item.overallScore >= 80 ? "text-emerald-500" : 
-                         item.overallScore >= 60 ? "text-amber-500" : 
-                         "text-destructive"
-                       )}>
+                       <span className={cn("text-2xl font-black", item.overallScore >= 80 ? "text-emerald-500" : "text-accent")}>
                          {item.overallScore}
                        </span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={item.overallScore >= 60 ? "secondary" : "outline"} className={cn("text-[10px] font-bold uppercase", item.overallScore < 60 && "border-destructive text-destructive")}>
-                        {item.overallScore >= 80 ? "Compliant" : item.overallScore >= 60 ? "Fair" : "At Risk"}
+                      <Badge variant="outline" className={cn("text-[10px] font-bold uppercase", item.overallScore >= 60 ? "border-emerald-500 text-emerald-500" : "border-destructive text-destructive")}>
+                        {item.overallScore >= 80 ? "Strong" : item.overallScore >= 60 ? "Fair" : "At Risk"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="sm" asChild className="font-bold">
-                          <Link href={`/assessments/${item.id}/results`}>
-                            <Eye className="w-4 h-4" />
-                          </Link>
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/systems/${item.systemId}/assessments/${item.id}/results`}><Eye className="w-4 h-4" /></Link>
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setDeletingId(item.id)} className="text-destructive hover:bg-destructive/10">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setDeletingId({systemId: item.systemId, id: item.id})} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
                 ))}
-                {filtered.length === 0 && !loading && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-24 text-muted-foreground italic">
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="bg-muted p-6 rounded-full">
-                          <HistoryIcon className="w-12 h-12 opacity-20" />
-                        </div>
-                        <p>No matching audit records found.</p>
-                        <Button variant="link" asChild className="font-black text-accent">
-                          <Link href="/assessments/new">Start your first audit</Link>
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                {filtered.length === 0 && (
+                  <TableRow><TableCell colSpan={5} className="text-center py-24 italic">No matching records found.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -233,18 +191,8 @@ function HistoryContent() {
 
         <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
           <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete this audit report?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently remove this assessment record from your history. This cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteAssessment} className="bg-destructive text-white hover:bg-destructive/90">
-                Delete Report
-              </AlertDialogAction>
-            </AlertDialogFooter>
+            <AlertDialogHeader><AlertDialogTitle>Delete Report?</AlertDialogTitle><AlertDialogDescription>This will permanently remove the record.</AlertDialogDescription></AlertDialogHeader>
+            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteAssessment} className="bg-destructive text-white">Delete</AlertDialogAction></AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
       </main>
@@ -253,15 +201,5 @@ function HistoryContent() {
 }
 
 export default function HistoryPage() {
-  return (
-    <AuthGuard>
-      <Suspense fallback={
-        <div className="flex items-center justify-center min-h-screen bg-background">
-          <Loader2 className="w-8 h-8 animate-spin text-accent" />
-        </div>
-      }>
-        <HistoryContent />
-      </Suspense>
-    </AuthGuard>
-  );
+  return <AuthGuard><Suspense><HistoryContent /></Suspense></AuthGuard>;
 }

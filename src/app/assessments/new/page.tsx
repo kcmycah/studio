@@ -1,11 +1,10 @@
-
 "use client";
 
 import { useState, useMemo, Suspense } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useUser, useFirestore, useCollection } from "@/firebase";
-import { collection, query, where, doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { AISystem, PERSONAS, PersonaType, TestRunResult } from "@/lib/types";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -23,8 +22,6 @@ import {
 import { ShieldAlert, Play, Loader2, Users, Layers } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 import { computeFullDISAScore } from "@/lib/scoring/disaScoring";
 
 function NewAssessmentContent() {
@@ -40,7 +37,6 @@ function NewAssessmentContent() {
   const [selectedPersonas, setSelectedPersonas] = useState<PersonaType[]>([]);
   const [running, setRunning] = useState(false);
 
-  // useCollection now handles security scoping for 'ai_systems' automatically
   const { data: systems, loading: systemsLoading } = useCollection<AISystem>("ai_systems");
 
   const selectedSystem = useMemo(() => {
@@ -49,38 +45,22 @@ function NewAssessmentContent() {
 
   const togglePersona = (persona: PersonaType) => {
     setSelectedPersonas(prev => 
-      prev.includes(persona) 
-        ? prev.filter(p => p !== persona) 
-        : [...prev, persona]
+      prev.includes(persona) ? prev.filter(p => p !== persona) : [...prev, persona]
     );
   };
 
   const handleRunTest = async () => {
-    if (!selectedSystem || selectedPersonas.length === 0 || !user || !db || !version) {
-      toast({
-        variant: "destructive",
-        title: "Configuration Error",
-        description: "Please ensure a system, version, and at least one persona are selected.",
-      });
-      return;
-    }
+    if (!selectedSystem || selectedPersonas.length === 0 || !user || !db || !version) return;
 
     setRunning(true);
     try {
       const response = await fetch("/api/run-tests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          personas: selectedPersonas,
-          url: selectedSystem.url 
-        })
+        body: JSON.stringify({ personas: selectedPersonas, url: selectedSystem.url })
       });
 
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Failed to initiate audit.");
-      }
-
+      if (!response.ok) throw new Error("Failed to initiate audit.");
       const { results, domainScores, biasExplanation } = await response.json();
       
       const finalScores = computeFullDISAScore({
@@ -90,7 +70,8 @@ function NewAssessmentContent() {
         equityDataScore: domainScores.equityData
       });
 
-      const assessmentRef = doc(collection(db, "assessments"));
+      // Nested path: ai_systems/{systemId}/assessments/{assessmentId}
+      const assessmentRef = doc(collection(db, "ai_systems", selectedSystem.id, "assessments"));
       const assessmentData = {
         systemId: selectedSystem.id,
         userId: user.uid,
@@ -103,51 +84,26 @@ function NewAssessmentContent() {
           transparency: finalScores.transparencyScore,
           equityData: finalScores.equityDataScore
         },
-        details: {
-          biasExplanation: biasExplanation || ""
-        }
+        details: { biasExplanation: biasExplanation || "" }
       };
 
-      setDoc(assessmentRef, assessmentData)
-        .catch(async () => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: assessmentRef.path,
-            operation: 'create',
-            requestResourceData: assessmentData
-          }));
-        });
+      await setDoc(assessmentRef, assessmentData);
 
-      results.forEach((res: TestRunResult) => {
+      for (const res of results) {
         const runRef = doc(collection(db, "testRuns"));
-        const runData = {
+        await setDoc(runRef, {
           ...res,
           assessmentId: assessmentRef.id,
-          userId: user.uid, // Unified security field
+          systemId: selectedSystem.id,
+          userId: user.uid,
           createdAt: serverTimestamp()
-        };
-        
-        setDoc(runRef, runData)
-          .catch(async () => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-              path: runRef.path,
-              operation: 'create',
-              requestResourceData: runData
-            }));
-          });
-      });
+        });
+      }
 
-      toast({
-        title: "Audit Finalized",
-        description: `Overall DISA Score: ${finalScores.overallScore}`,
-      });
-
-      router.push(`/assessments/${assessmentRef.id}/results`);
+      toast({ title: "Audit Finalized", description: `Score: ${finalScores.overallScore}` });
+      router.push(`/systems/${selectedSystem.id}/assessments/${assessmentRef.id}/results`);
     } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "Critical Audit Error",
-        description: err.message,
-      });
+      toast({ variant: "destructive", title: "Error", description: err.message });
       setRunning(false);
     }
   };
@@ -156,102 +112,39 @@ function NewAssessmentContent() {
     <div className="flex min-h-screen bg-background">
       <AppSidebar />
       <main className="flex-1 md:ml-[260px] p-8 pt-24 md:pt-8 max-w-5xl mx-auto w-full">
-        <header className="mb-10">
-          <h1 className="text-3xl font-bold tracking-tight">New Assessment</h1>
-          <p className="text-muted-foreground mt-1">Configure and launch a deterministic DISA audit.</p>
-        </header>
-
-        <Card className="glass-morphism border-primary/20">
-          <CardHeader>
-            <div className="flex items-center gap-3 mb-2">
-              <ShieldAlert className="w-8 h-8 text-primary" />
-              <CardTitle className="text-2xl">Initiate Fairness Audit</CardTitle>
-            </div>
-            <CardDescription className="text-lg">
-              Deterministic persona-based scanning for functional AI equity.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-10">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <Label className="text-lg font-semibold">Select AI System</Label>
+        <header className="mb-10"><h1 className="text-3xl font-bold">New Assessment</h1></header>
+        <Card>
+          <CardHeader><CardTitle>Initiate Fairness Audit</CardTitle></CardHeader>
+          <CardContent className="space-y-8">
+            <div className="grid grid-cols-2 gap-8">
+              <div className="space-y-2">
+                <Label>AI System</Label>
                 <Select value={selectedSystemId} onValueChange={setSelectedSystemId} disabled={systemsLoading}>
-                  <SelectTrigger className="h-12">
-                    <SelectValue placeholder={systemsLoading ? "Loading..." : "Target system"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {systems?.map(s => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
+                  <SelectTrigger><SelectValue placeholder="Target system" /></SelectTrigger>
+                  <SelectContent>{systems?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              
-              <div className="space-y-4">
-                <Label className="text-lg font-semibold flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-primary" /> Audit Version
-                </Label>
-                <Input 
-                  value={version} 
-                  onChange={e => setVersion(e.target.value)} 
-                  placeholder="e.g. 1.0.0-alpha"
-                  className="h-12"
-                />
+              <div className="space-y-2">
+                <Label>Version</Label>
+                <Input value={version} onChange={e => setVersion(e.target.value)} />
               </div>
             </div>
-
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-lg font-semibold flex items-center gap-2">
-                  <Users className="w-5 h-5 text-primary" />
-                  Target Disability Personas
-                </Label>
-                <Button 
-                  variant="link" 
-                  size="sm" 
-                  onClick={() => setSelectedPersonas([...PERSONAS])}
-                  className="text-xs"
-                >
-                  Select All Personas
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {PERSONAS.map(persona => (
-                  <div 
-                    key={persona} 
-                    className={cn(
-                      "flex items-center space-x-3 border p-4 rounded-xl transition-all cursor-pointer hover:bg-primary/5",
-                      selectedPersonas.includes(persona) ? "border-primary bg-primary/10 shadow-inner" : "border-border"
-                    )}
-                    onClick={() => togglePersona(persona)}
-                  >
-                    <Checkbox 
-                      id={persona} 
-                      checked={selectedPersonas.includes(persona)}
-                      onCheckedChange={() => togglePersona(persona)}
-                    />
-                    <label 
-                      htmlFor={persona} 
-                      className="text-sm font-medium cursor-pointer leading-none flex-grow"
-                    >
-                      {persona}
-                    </label>
+              <Label>Target Personas</Label>
+              <div className="grid grid-cols-3 gap-4">
+                {PERSONAS.map(p => (
+                  <div key={p} className="flex items-center space-x-2 border p-3 rounded-lg">
+                    <Checkbox id={p} checked={selectedPersonas.includes(p)} onCheckedChange={() => togglePersona(p)} />
+                    <label htmlFor={p} className="text-sm font-medium">{p}</label>
                   </div>
                 ))}
               </div>
             </div>
           </CardContent>
-          <CardFooter className="flex justify-between border-t border-primary/5 pt-8">
-            <Button variant="ghost" onClick={() => router.push("/dashboard")} disabled={running}>
-              Cancel
-            </Button>
-            <Button 
-              size="lg" 
-              className="px-10 h-14 text-lg bg-accent text-white hover:bg-accent/90" 
-              onClick={handleRunTest}
-              disabled={running || !selectedSystemId || selectedPersonas.length === 0 || !version}
-            >
-              {running ? <><Loader2 className="w-5 h-5 mr-3 animate-spin" />Running Scans...</> : <><Play className="w-5 h-5 mr-3" />Start DISA Audit</>}
+          <CardFooter className="flex justify-between border-t pt-8">
+            <Button variant="ghost" onClick={() => router.push("/dashboard")}>Cancel</Button>
+            <Button size="lg" className="bg-accent text-white" onClick={handleRunTest} disabled={running || !selectedSystemId || selectedPersonas.length === 0}>
+              {running ? <><Loader2 className="w-5 h-5 mr-3 animate-spin" />Running...</> : "Start Audit"}
             </Button>
           </CardFooter>
         </Card>
@@ -261,11 +154,5 @@ function NewAssessmentContent() {
 }
 
 export default function NewAssessmentPage() {
-  return (
-    <AuthGuard>
-      <Suspense fallback={<div className="flex justify-center p-24"><Loader2 className="animate-spin text-primary" /></div>}>
-        <NewAssessmentContent />
-      </Suspense>
-    </AuthGuard>
-  );
+  return <AuthGuard><Suspense><NewAssessmentContent /></Suspense></AuthGuard>;
 }

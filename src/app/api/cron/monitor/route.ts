@@ -6,10 +6,8 @@ import { computeDISAScore } from "@/lib/scoring";
 
 /**
  * Cron endpoint for scheduled monitoring.
- * This should be called by an external cron service (e.g., Vercel Cron, GitHub Actions).
  */
 export async function GET(req: NextRequest) {
-  // Simple check for cron secret if provided in environment
   const authHeader = req.headers.get('authorization');
   if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -21,7 +19,6 @@ export async function GET(req: NextRequest) {
   }
   
   try {
-    // 1. Find all Pro/Enterprise users with monitoring enabled
     const usersQuery = query(
       collection(firestore, "users"),
       where("subscriptionStatus", "in", ["pro", "enterprise"])
@@ -34,7 +31,6 @@ export async function GET(req: NextRequest) {
       const userData = userDoc.data() as UserProfile;
       if (!userData.settings.scheduledMonitor?.enabled) continue;
 
-      // 2. Fetch all systems for this user
       const systemsQuery = query(
         collection(firestore, "ai_systems"),
         where("userId", "==", userDoc.id)
@@ -44,7 +40,6 @@ export async function GET(req: NextRequest) {
       for (const systemDoc of systemsSnap.docs) {
         const system = { id: systemDoc.id, ...systemDoc.data() } as AISystem;
 
-        // 3. Simulate the audit (Calling our own internal logic/API)
         const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/run-tests`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -56,13 +51,11 @@ export async function GET(req: NextRequest) {
 
         if (!response.ok) continue;
 
-        const { results, domainScores, biasExplanation }: { results: TestRunResult[], domainScores: any, biasExplanation: string } = await response.json();
-        
-        // Use the domain score if available, or compute fallback
+        const { results, domainScores, biasExplanation } = await response.json();
         const score = domainScores?.accessibility || computeDISAScore(results);
 
-        // 4. Save the automated assessment
-        const assessmentRef = doc(collection(firestore, "assessments"));
+        // Path: ai_systems/{systemId}/assessments/{assessmentId}
+        const assessmentRef = doc(collection(firestore, "ai_systems", system.id, "assessments"));
         await setDoc(assessmentRef, {
           systemId: system.id,
           userId: userDoc.id,
@@ -75,13 +68,13 @@ export async function GET(req: NextRequest) {
           }
         });
 
-        // 5. Save test runs with userId for security rule compliance
         for (const res of results) {
           const runRef = doc(collection(firestore, "testRuns"));
           await setDoc(runRef, {
             ...res,
             assessmentId: assessmentRef.id,
-            userId: userDoc.id, // CRITICAL: Added for security rules
+            systemId: system.id, // CRITICAL: Added for path scoping
+            userId: userDoc.id,
             createdAt: serverTimestamp()
           });
         }

@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PersonaType, AccessibilityIssue, TestRunResult } from "@/lib/types";
-import { computeTransparencyScore } from '@/lib/scoring/transparencyScore';
-import { computeEquityDataScore } from '@/lib/scoring/equityDataScore';
-import { evaluateBiasRisk } from '@/lib/scoring/biasScore';
 import { computeAccessibilitySegmentScore } from '@/lib/scoring';
 
 export const maxDuration = 60;

@@ -49,6 +49,7 @@
       "type": "object",
       "properties": {
         "assessmentId": { "type": "string" },
+        "systemId": { "type": "string" },
         "userId": { "type": "string" },
         "persona": { "type": "string" },
         "success": { "type": "boolean" },
@@ -66,7 +67,7 @@
         },
         "createdAt": { "type": "object", "format": "date-time" }
       },
-      "required": ["assessmentId", "userId", "persona", "success"]
+      "required": ["assessmentId", "systemId", "userId", "persona", "success"]
     },
     "User": {
       "title": "User Profile",
@@ -129,9 +130,9 @@
       "schema": "AISystem",
       "description": "Inventory of AI systems per user."
     },
-    "/assessments/{assessmentId}": {
+    "/ai_systems/{systemId}/assessments/{assessmentId}": {
       "schema": "Assessment",
-      "description": "Record of comprehensive DISA audits."
+      "description": "System-specific record of comprehensive DISA audits."
     },
     "/testRuns/{runId}": {
       "schema": "TestRun",

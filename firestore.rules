@@ -7,38 +7,38 @@ service cloud.firestore {
     }
 
     // AI systems
-    match /ai_systems/{document} {
-      allow read, write: if isOwner(resource.data.userId);
+    match /ai_systems/{systemId} {
+      allow read, write, delete: if isOwner(resource.data.userId);
+      allow create: if request.auth != null && isOwner(request.resource.data.userId);
+
+      // Assessments subcollection – scoped to the system owner
+      match /assessments/{assessmentId} {
+        allow read, write, delete: if isOwner(get(/databases/$(database)/documents/ai_systems/$(systemId)).data.userId);
+        allow create: if request.auth != null && isOwner(request.resource.data.userId);
+      }
     }
 
-    // Assessments – explicitly scoped list rules
-    match /assessments/{document} {
-      allow get: if isOwner(resource.data.userId);
-      allow list: if request.auth != null && 
-                  request.query.filters.some(f => 
-                    f.field == 'userId' && 
-                    f.op == '==' && 
-                    f.value == request.auth.uid
-                  );
-      allow write: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId);
-    }
-
-    // disa_assessments (if you use it)
-    match /disa_assessments/{document} {
-      allow read: if isOwner(resource.data.userId);
-      allow write: if isOwner(resource.data.userId);
-    }
-
-    // testRuns
+    // testRuns – simplified to direct ownership
     match /testRuns/{document} {
-      allow read: if resource.data.userId == request.auth.uid;
+      allow read: if isOwner(resource.data.userId);
       allow write: if request.auth != null;
     }
 
     // user_preferences
     match /user_preferences/{userId} {
       allow read, write: if isOwner(userId);
+    }
+
+    // users
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if isOwner(userId);
+    }
+
+    // feedback
+    match /feedback/{feedbackId} {
+      allow create: if request.auth != null;
+      allow read: if isOwner(resource.data.userId);
     }
   }
 }
