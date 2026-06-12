@@ -3,34 +3,30 @@
 
 AuditAccess is a professional platform for auditing AI systems for accessibility and fairness using the **DISA (Disability-Inclusive System Assessment)** framework.
 
-## 🚀 Deployment & Export Guide
+## 🚀 Terminal Commands (Run these in your Command Prompt/Terminal)
 
-### 1. Initialize and Push to GitHub
-If you are setting up this repository for the first time, run these commands in your **local terminal**:
+Follow these steps exactly to push your changes and fix build errors:
 
+### 1. Stage and Commit Changes
 ```bash
-# Initialize and commit
-git init
+# Add all updated files
 git add .
-git commit -m "Fix: Resolve build dependencies for production"
 
-# Link and push to your repository
-git remote add origin https://github.com/kcmycah/disa-app.git
-git branch -M main
-git push -u origin main
+# Commit with a descriptive message
+git commit -m "Fix: Resolve Lemon Squeezy module resolution and configuration"
+
+# Push to your GitHub repository
+git push origin main
 ```
 
 ### 2. Create a Project Archive (Zip)
-To create a clean archive of your project (excluding heavy dependencies and git history), run:
-
+If you need to send the project as a file:
 ```bash
 zip -r disa-app.zip . -x "*.git*" "node_modules/*" ".next/*" "disa-app.zip"
 ```
 
-### 3. Deploy to Vercel or Firebase App Hosting
-1. Install the CLI for your target platform.
-2. Link your project.
-3. Ensure all environment variables (Firebase, Gemini, Resend, Lemon Squeezy) are added to your dashboard.
+### 3. Deploy to Firebase App Hosting
+Once you push to GitHub, Firebase App Hosting will automatically trigger a build. If it fails, check the logs in the Firebase Console.
 
 ---
 Built for the inclusive future of AI.

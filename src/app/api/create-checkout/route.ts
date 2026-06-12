@@ -30,10 +30,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid LEMON_SQUEEZY_STORE_ID. Must be a numeric value." }, { status: 500 });
     }
 
-    // Initialize Lemon Squeezy client with explicit API Key
+    // Initialize Lemon Squeezy client
     lemonSqueezySetup({
       apiKey: apiKey,
-      onError: (error) => console.error("Lemon Squeezy Initialization Error:", error),
     });
 
     // Create the checkout session with custom metadata for webhooks
@@ -54,14 +53,14 @@ export async function POST(req: NextRequest) {
     );
 
     if (!checkout.data) {
-      throw new Error("Lemon Squeezy API did not return a checkout object. Please verify your Store ID and Variant ID in the Lemon Squeezy dashboard.");
+      throw new Error("Lemon Squeezy API did not return a checkout object.");
     }
 
     return NextResponse.json({ url: checkout.data.data.attributes.url });
   } catch (error: any) {
     console.error("Checkout System Error:", error);
     return NextResponse.json({ 
-      error: error.message || "Failed to initiate billing session. Please try again later." 
+      error: error.message || "Failed to initiate billing session." 
     }, { status: 500 });
   }
 }
