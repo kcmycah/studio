@@ -1,3 +1,4 @@
+
 # AuditAccess - Inclusive AI Audit Pipeline
 
 AuditAccess is a professional platform for auditing AI systems for accessibility and fairness using the **DISA (Disability-Inclusive System Assessment)** framework.
@@ -43,7 +44,7 @@ vercel --prod
 
 ## Architecture
 - **Nested Assessments**: Assessments are stored per-system (`ai_systems/{id}/assessments`) to ensure strict data isolation and efficient path-scoped queries.
-- **Intelligent Scoping**: The `useCollection` hook automatically handles security filters for top-level user-owned collections.
+- **Intelligent Scoping**: The `useCollection` hook automatically handles security filters for top-level user-owned collections while allowing path-scoped access for subcollections.
 - **GenAI Summaries**: Uses Genkit and Gemini to generate executive summaries and persona-impact explanations.
 - **Billing Integration**: Full lifecycle management for Pro/Enterprise subscriptions via Lemon Squeezy.
 

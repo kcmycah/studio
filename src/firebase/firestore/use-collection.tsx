@@ -53,7 +53,7 @@ export function useCollection<T = DocumentData>(
       const isTopLevelProtected = !path.includes('/') && protectedPaths.includes(path);
       
       // We only inject userId filter for top-level collections where it's required.
-      // Subcollections like ai_systems/{id}/assessments are path-scoped.
+      // Subcollections like ai_systems/{id}/assessments are path-scoped and don't require broad 'list' rules.
       if (isTopLevelProtected) {
         const hasUserIdFilter = constraints.some(c => c.toString().includes('userId'));
         if (!hasUserIdFilter) {

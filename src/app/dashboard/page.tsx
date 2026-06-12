@@ -1,30 +1,24 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useUser, useFirestore, useCollection } from "@/firebase";
-import { collection, query, where, getDocs, doc, getDoc, deleteDoc, orderBy, limit } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, deleteDoc, orderBy, limit } from "firebase/firestore";
 import { AISystem, Assessment, UserProfile } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { 
   Bot, 
-  ArrowRight, 
-  ExternalLink, 
-  Plus, 
-  Loader2,
   PlusCircle,
-  Calendar,
+  Loader2,
   Layers,
-  BarChart3,
-  TrendingUp,
   MoreVertical,
   Trash2,
-  Edit,
-  ShieldCheck
+  ShieldCheck,
+  Play
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -62,7 +56,7 @@ export default function Dashboard() {
     const fetchData = async () => {
       const stats: Record<string, { latest: Assessment, count: number }> = {};
       for (const system of systems) {
-        // Query the subcollection for each system
+        // Query the subcollection for each system specifically
         const q = query(
           collection(db, "ai_systems", system.id, "assessments"),
           orderBy("createdAt", "desc"),
@@ -72,7 +66,7 @@ export default function Dashboard() {
         if (!snap.empty) {
           stats[system.id] = {
             latest: { id: snap.docs[0].id, ...snap.docs[0].data() } as Assessment,
-            count: 1 // In a real app, you might want another query for the full count
+            count: 1
           };
         }
       }

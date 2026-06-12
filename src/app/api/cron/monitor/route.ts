@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
         const { results, domainScores, biasExplanation } = await response.json();
         const score = domainScores?.accessibility || computeDISAScore(results);
 
-        // Path: ai_systems/{systemId}/assessments/{assessmentId}
+        // Subcollection Path: ai_systems/{systemId}/assessments/{assessmentId}
         const assessmentRef = doc(collection(firestore, "ai_systems", system.id, "assessments"));
         await setDoc(assessmentRef, {
           systemId: system.id,
