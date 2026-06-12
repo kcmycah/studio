@@ -6,7 +6,7 @@ AuditAccess is a professional platform for auditing AI systems for accessibility
 ## 🚀 Deployment & Export Guide
 
 ### 1. Initialize and Push to GitHub
-If you are setting up this repository for the first time, run these commands in your local terminal:
+If you are setting up this repository for the first time, run these commands in your **local terminal**:
 
 ```bash
 # Initialize and commit
