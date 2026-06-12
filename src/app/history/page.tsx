@@ -54,7 +54,7 @@ function HistoryContent() {
     if (!user || !db) return;
     setLoading(true);
     
-    // Security rules require explicit limit for collection queries
+    // Security rules require explicit limit and userId filter for collection queries
     const assessmentsQuery = query(
       collection(db, "assessments"), 
       where("userId", "==", user.uid),
@@ -81,8 +81,7 @@ function HistoryContent() {
             ...data,
             systemName: systemsMap.get(data.systemId) || "Unknown System"
           };
-        })
-        .filter(item => !!item.createdAt);
+        });
       
       const filteredResults = systemIdFilter 
         ? results.filter(a => a.systemId === systemIdFilter)
@@ -95,7 +94,6 @@ function HistoryContent() {
         path: 'assessments',
         operation: 'list'
       }));
-      toast({ variant: "destructive", title: "Access Denied", description: "Could not retrieve history logs." });
     }).finally(() => {
       setLoading(false);
     });

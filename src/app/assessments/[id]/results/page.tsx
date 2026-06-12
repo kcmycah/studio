@@ -78,7 +78,7 @@ export default function AssessmentResultsPage() {
             }));
           });
 
-        // Security rules require explicit limit for list queries
+        // Security rules require explicit filters and limit
         const q = query(
           collection(db, "testRuns"), 
           where("assessmentId", "==", id as string),
