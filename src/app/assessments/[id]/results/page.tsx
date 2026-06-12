@@ -58,7 +58,6 @@ export default function AssessmentResultsPage() {
     
     const assessmentRef = doc(db, "assessments", id as string);
     
-    // Pattern 1: Firestore Mutations/Reads with Contextual Errors
     getDoc(assessmentRef)
       .then(async (assessmentSnap) => {
         if (!assessmentSnap.exists()) {
@@ -232,6 +231,10 @@ export default function AssessmentResultsPage() {
     }
   };
 
+  const handlePrintPDF = () => {
+    window.print();
+  };
+
   if (loading) return <div className="flex items-center justify-center min-h-screen bg-background"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>;
 
   return (
@@ -254,7 +257,7 @@ export default function AssessmentResultsPage() {
                 {exportingCsv ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileSpreadsheet className="w-4 h-4 mr-2" />}
                 CSV Log
               </Button>
-              <Button variant="outline" onClick={() => window.print()} className="font-bold">
+              <Button variant="outline" onClick={handlePrintPDF} className="font-bold">
                 <Printer className="w-4 h-4 mr-2" />
                 Export PDF
               </Button>
@@ -265,8 +268,8 @@ export default function AssessmentResultsPage() {
             </div>
           </div>
 
-          <Card className="shadow-2xl border-2 border-border overflow-hidden print:shadow-none print:border-none bg-white text-black min-h-[1100px] print:min-h-0 flex flex-col transition-all">
-            <header className="bg-black text-white p-10 md:p-14 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+          <Card className="print-report shadow-2xl border-2 border-border overflow-hidden print:shadow-none print:border-none bg-white text-black min-h-[1100px] print:min-h-0 flex flex-col transition-all">
+            <header className="report-header bg-black text-white p-10 md:p-14 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
               <div className="space-y-3 max-w-full">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Compliance Disclosure</p>
                 <h2 className="text-4xl md:text-5xl font-black tracking-tighter break-words">{system?.name} <span className="text-accent">v{assessment?.version}</span></h2>
@@ -399,7 +402,7 @@ export default function AssessmentResultsPage() {
                  </div>
               </section>
 
-              <section className="space-y-8 print:hidden">
+              <section className="space-y-8 print:block">
                 <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground border-b border-black/10 pb-2">V. Framework Pillars & Risk Factors</h3>
                 <Accordion type="single" collapsible className="w-full">
                   {[
