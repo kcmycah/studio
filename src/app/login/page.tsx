@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from "react";
@@ -21,16 +20,12 @@ import {
   AlertCircle, 
   Eye, 
   EyeOff,
-  CheckCircle2,
-  BarChart4,
-  Users,
-  Scale,
   Globe,
-  ArrowRight
+  Info
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { cn } from "@/lib/utils";
+import { firebaseConfig } from "@/firebase/config";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -39,13 +34,15 @@ export default function LoginPage() {
   const [resetLoading, setResetLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [errorHint, setErrorHint] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<{ code: string; message: string } | null>(null);
   
   const router = useRouter();
   const { toast } = useToast();
   const auth = useAuth();
   const db = useFirestore();
   const { user, loading: userLoading } = useUser();
+
+  const isConfigMissing = !firebaseConfig.apiKey;
 
   useEffect(() => {
     if (user && !userLoading) {
@@ -56,7 +53,7 @@ export default function LoginPage() {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setErrorHint(null);
+    setErrorDetails(null);
     try {
       if (isSignUp) {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -73,26 +70,19 @@ export default function LoginPage() {
             }
           }
         });
-        toast({ title: "Account Created", description: "Welcome to AuditAccess!" });
+        toast({ title: "Account Created", description: "Welcome to DISA Audit!" });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
         toast({ title: "Welcome Back", description: "Successfully signed in." });
       }
     } catch (error: any) {
-      let message = "An error occurred during authentication.";
-      if (error.code === 'auth/network-request-failed') {
-        message = "Network request failed. This is often caused by an ad-blocker.";
-        setErrorHint("Troubleshooting: Disable extensions like uBlock or AdBlock for this site.");
-      } else if (error.code === 'auth/invalid-credential') {
-        message = "Incorrect email or password.";
-      } else if (error.code === 'auth/email-already-in-use') {
-        message = "This email is already registered.";
-        setIsSignUp(false);
-      }
+      console.error("Auth error:", error);
+      setErrorDetails({ code: error.code, message: error.message });
+      
       toast({
         variant: "destructive",
         title: isSignUp ? "Sign Up Failed" : "Sign In Failed",
-        description: message,
+        description: error.code || "An authentication error occurred.",
       });
     } finally {
       setLoading(false);
@@ -123,171 +113,137 @@ export default function LoginPage() {
     );
   }
 
-  const features = [
-    { icon: ShieldCheck, text: "WCAG 2.2 accessibility scanning (axe-core)" },
-    { icon: Users, text: "Bias detection across 7 disability personas" },
-    { icon: Scale, text: "DISA framework compliant equity scoring" },
-    { icon: BarChart4, text: "Version comparison & executive reporting" },
-  ];
-
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 md:p-8">
-      <div className="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-        {/* Left Column: Messaging & Info */}
-        <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-700">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold uppercase tracking-wider">
-            <Globe className="w-3 h-3" /> Inclusive AI Standard
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="max-w-md w-full space-y-8">
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center justify-center p-3 bg-accent/10 rounded-2xl mb-2">
+            <ShieldCheck className="w-10 h-10 text-accent" />
           </div>
-          <div className="space-y-4">
-            <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-foreground leading-[0.9]">
-              AuditAccess <span className="text-accent">Pipeline.</span>
-            </h1>
-            <p className="text-xl text-muted-foreground font-medium max-w-lg leading-relaxed">
-              The Disability Inclusion Scoring Algorithm (DISA) – the industry standard for evaluating AI systems for functional fairness and accessibility.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {features.map((f, i) => (
-              <div key={i} className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border shadow-sm">
-                <div className="bg-accent/10 p-2 rounded-lg">
-                  <f.icon className="w-5 h-5 text-accent" />
-                </div>
-                <span className="text-sm font-bold text-foreground/80 leading-tight">{f.text}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="p-6 rounded-2xl bg-accent/5 border border-accent/10 space-y-2">
-            <p className="text-sm font-black uppercase tracking-widest text-accent">Strategic Impact</p>
-            <p className="text-muted-foreground text-sm font-medium">
-              Trusted by product teams to eliminate "Digital Ableism" and ensure AI endpoints provide equitable service delivery for all users.
-            </p>
-          </div>
+          <h1 className="text-3xl font-black tracking-tight">DISA Audit</h1>
+          <p className="text-muted-foreground">The inclusive standard for AI accessibility.</p>
         </div>
 
-        {/* Right Column: Auth Card & Preview */}
-        <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-right-4 duration-700">
-          <Card className="border-2 border-border shadow-2xl overflow-hidden">
-            <CardHeader className="bg-muted/30 pb-8 text-center">
-              <div className="mx-auto bg-white p-4 rounded-2xl w-fit shadow-inner mb-4">
-                <ShieldCheck className="w-8 h-8 text-accent" />
-              </div>
-              <CardTitle className="text-3xl font-black tracking-tight">
-                {isSignUp ? "Create Account" : "Welcome Back"}
-              </CardTitle>
-              <CardDescription className="text-base">
-                {isSignUp ? "Join the inclusive AI movement." : "Sign in to manage your audit pipeline."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-8 space-y-4">
-              {errorHint && (
-                <Alert className="bg-destructive/5 border-destructive/20 text-destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-xs font-bold">{errorHint}</AlertDescription>
-                </Alert>
-              )}
+        {isConfigMissing && (
+          <Alert variant="destructive" className="bg-destructive/5 border-destructive/20">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle className="font-bold uppercase text-[10px] tracking-widest">Configuration Missing</AlertTitle>
+            <AlertDescription className="text-xs">
+              Firebase API Key not found. Please add your Firebase configuration to the <code className="bg-destructive/10 px-1 rounded">.env</code> file.
+            </AlertDescription>
+          </Alert>
+        )}
 
-              <form onSubmit={handleAuth} className="space-y-4">
-                <div className="space-y-2">
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3.5 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      type="email"
-                      placeholder="Corporate email"
-                      className="pl-10 h-12 bg-muted/50"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
+        {errorDetails && (
+          <div className="space-y-3">
+            <Alert variant="destructive" className="bg-destructive/5 border-destructive/20">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle className="font-bold uppercase text-[10px] tracking-widest">Auth Error: {errorDetails.code}</AlertTitle>
+              <AlertDescription className="text-xs">{errorDetails.message}</AlertDescription>
+            </Alert>
+            
+            <div className="bg-accent/5 border border-accent/10 rounded-lg p-4 space-y-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-accent flex items-center gap-2">
+                <Info className="w-3 h-3" /> Troubleshooting Pro-Tips
+              </p>
+              <ul className="text-xs space-y-2 text-muted-foreground font-medium">
+                {errorDetails.code === 'auth/network-request-failed' && (
+                  <li>• <strong>Ad-blockers</strong> often block Firebase. Try disabling uBlock or AdBlock.</li>
+                )}
+                {errorDetails.code === 'auth/operation-not-allowed' && (
+                  <li>• <strong>Password Auth</strong> must be enabled in the Firebase Console under Authentication > Sign-in method.</li>
+                )}
+                {(errorDetails.code === 'auth/unauthorized-domain' || errorDetails.message.includes('domain')) && (
+                  <li>• This domain needs to be added to <strong>Authorized Domains</strong> in the Firebase Console.</li>
+                )}
+                <li>• Ensure you are using a valid email and a password at least 6 characters long.</li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        <Card className="border-2 shadow-xl">
+          <CardHeader className="pb-4">
+            <CardTitle>{isSignUp ? "Create Account" : "Sign In"}</CardTitle>
+            <CardDescription>
+              {isSignUp ? "Register your organization for DISA auditing." : "Access your inclusive AI workspace."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleAuth} className="space-y-4">
+              <div className="space-y-2">
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="email"
+                    placeholder="Email address"
+                    className="pl-10 h-11"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={isConfigMissing || loading}
+                  />
                 </div>
-                <div className="space-y-2">
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3.5 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Password"
-                      className="pl-10 pr-10 h-12 bg-muted/50"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="absolute right-3 top-3.5 text-muted-foreground hover:text-foreground"
-                      onClick={() => setShowPassword(!showPassword)}
+              </div>
+              <div className="space-y-2">
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Password"
+                    className="pl-10 pr-10 h-11"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={isConfigMissing || loading}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {!isSignUp && (
+                  <div className="flex justify-end">
+                    <button 
+                      type="button" 
+                      className="text-xs text-accent hover:underline font-bold"
+                      onClick={handleResetPassword}
+                      disabled={resetLoading || isConfigMissing}
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      Forgot password?
                     </button>
                   </div>
-                  {!isSignUp && (
-                    <div className="flex justify-end">
-                      <button 
-                        type="button" 
-                        className="text-xs text-muted-foreground hover:text-accent font-bold"
-                        onClick={handleResetPassword}
-                        disabled={resetLoading}
-                      >
-                        Forgot password?
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <Button className="w-full h-12 text-lg font-black bg-accent text-white hover:bg-accent/90" disabled={loading}>
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
-                  {isSignUp ? "Start Free Audit" : "Sign In to Workspace"}
-                </Button>
-              </form>
-            </CardContent>
-            <CardFooter className="bg-muted/30 border-t py-6 flex justify-center">
-              <p className="text-sm text-muted-foreground font-medium">
-                {isSignUp ? "Already evaluating?" : "New to DISA?"}{" "}
-                <button
-                  onClick={() => setIsSignUp(!isSignUp)}
-                  className="text-accent hover:underline font-black"
-                >
-                  {isSignUp ? "Sign In" : "Register Organization"}
-                </button>
-              </p>
-            </CardFooter>
-          </Card>
+                )}
+              </div>
+              <Button 
+                className="w-full h-11 text-base font-bold bg-accent text-white hover:bg-accent/90" 
+                disabled={loading || isConfigMissing}
+              >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
+                {isSignUp ? "Register Organization" : "Sign In to Workspace"}
+              </Button>
+            </form>
+          </CardContent>
+          <CardFooter className="flex justify-center border-t py-4 bg-muted/30">
+            <p className="text-sm text-muted-foreground">
+              {isSignUp ? "Already registered?" : "New to DISA?"}{" "}
+              <button
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="text-accent hover:underline font-bold"
+                disabled={loading}
+              >
+                {isSignUp ? "Sign In" : "Create Account"}
+              </button>
+            </p>
+          </CardFooter>
+        </Card>
 
-          {/* Example Result Preview Card */}
-          <div className="bg-card border-2 border-border rounded-3xl p-8 shadow-lg relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-              <BarChart4 className="w-32 h-32 text-accent" />
-            </div>
-            <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
-              <div className="text-center md:text-left">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Example Briefing Result</p>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-6xl font-black text-emerald-500">62</span>
-                  <span className="text-xl font-bold opacity-30">/100</span>
-                </div>
-                <p className="text-sm font-black text-emerald-600/80 mt-1 uppercase tracking-wider">Performance: Fair</p>
-              </div>
-              <div className="flex-1 grid grid-cols-2 gap-x-8 gap-y-4">
-                {[
-                  { label: "Accessibility", val: 74 },
-                  { label: "Bias Risk", val: 51 },
-                  { label: "Transparency", val: 48 },
-                  { label: "Equity Data", val: 35 },
-                ].map((d, i) => (
-                  <div key={i} className="space-y-1">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">{d.label}</p>
-                    <div className="flex items-center gap-2">
-                       <div className="h-1 flex-1 bg-muted rounded-full overflow-hidden">
-                         <div className="h-full bg-accent" style={{ width: `${d.val}%` }} />
-                       </div>
-                       <span className="text-[10px] font-bold">{d.val}%</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+        <p className="text-center text-[10px] text-muted-foreground uppercase font-black tracking-widest flex items-center justify-center gap-2">
+          <Globe className="w-3 h-3" /> Secure Inclusive AI Pipeline
+        </p>
       </div>
     </div>
   );
