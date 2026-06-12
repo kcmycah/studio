@@ -1,3 +1,4 @@
+
 # AuditAccess - Inclusive AI Audit Pipeline
 
 AuditAccess is a professional platform for auditing AI systems for accessibility and fairness using the **DISA (Disability-Inclusive System Assessment)** framework.
@@ -28,7 +29,7 @@ git push -u origin main
 ```
 
 ### 2. Configure Firebase
-1. Go to the [Firebase Console](https://console.firebase.google.com/).
+1. Go to the [Firebase Console](https://console.firebase.com/).
 2. Select your project: **disa-ec810**.
 3. Enable **Authentication** with the Email/Password provider.
 4. Create a **Cloud Firestore** database in production mode.
@@ -38,6 +39,7 @@ git push -u origin main
 1. Install the Vercel CLI: `npm install -g vercel`.
 2. Run `vercel` to link your project and deploy a preview.
 3. Add your environment variables in the Vercel Project Settings (copy them from your `.env`).
+    - *Note: Remember to add GEMINI_API_KEY and RESEND_API_KEY.*
 4. Run `vercel --prod` for the final production deployment.
 
 ## Architecture Notes
