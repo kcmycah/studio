@@ -30,7 +30,7 @@ zip -r disa-app.zip . -x "*.git*" "node_modules/*" ".next/*" "disa-app.zip"
 ### 3. Deploy to Vercel
 1. Install the Vercel CLI: `npm install -g vercel`.
 2. Run `vercel` to link your project.
-3. Add your environment variables (Firebase, Gemini, Resend) in the Vercel Dashboard.
+3. Add your environment variables (Firebase, Gemini, Resend, Lemon Squeezy) in the Vercel Dashboard.
 4. Run `vercel --prod` for final deployment.
 
 ---
