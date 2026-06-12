@@ -114,10 +114,10 @@ function NewAssessmentContent() {
       <AppSidebar />
       <main className="flex-1 md:ml-[260px] p-8 pt-24 md:pt-8 max-w-5xl mx-auto w-full">
         <header className="mb-10 text-foreground"><h1 className="text-3xl font-bold">New Assessment</h1></header>
-        <Card>
+        <Card className="text-foreground">
           <CardHeader><CardTitle>Initiate Fairness Audit</CardTitle></CardHeader>
           <CardContent className="space-y-8">
-            <div className="grid grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2">
                 <Label>AI System</Label>
                 <Select value={selectedSystemId} onValueChange={setSelectedSystemId} disabled={systemsLoading}>
@@ -132,7 +132,7 @@ function NewAssessmentContent() {
             </div>
             <div className="space-y-4">
               <Label>Target Personas</Label>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {PERSONAS.map(p => (
                   <div key={p} className="flex items-center space-x-2 border p-3 rounded-lg bg-card">
                     <Checkbox id={p} checked={selectedPersonas.includes(p)} onCheckedChange={() => togglePersona(p)} />

@@ -32,6 +32,8 @@ export interface TestRunResult {
 export interface TestRun extends TestRunResult {
   id: string;
   assessmentId: string;
+  systemId: string;
+  userId: string;
   createdAt: Timestamp;
 }
 

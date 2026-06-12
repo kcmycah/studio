@@ -6,7 +6,7 @@ import { AuthGuard } from "@/components/auth-guard";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useUser, useFirestore, useCollection } from "@/firebase";
 import { collection, query, where, getDocs, doc, deleteDoc, orderBy, limit } from "firebase/firestore";
-import { AISystem, Assessment, UserProfile } from "@/lib/types";
+import { AISystem, Assessment } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -89,7 +89,7 @@ export default function Dashboard() {
 
   return (
     <AuthGuard>
-      <div className="flex min-h-screen bg-background">
+      <div className="flex min-h-screen bg-background text-foreground">
         <AppSidebar />
         <main className="flex-1 md:ml-[260px] p-8 pt-24 md:pt-8 max-w-7xl mx-auto w-full">
           <header className="flex justify-between items-center mb-10">

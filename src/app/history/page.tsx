@@ -140,7 +140,7 @@ function HistoryContent() {
           </div>
         </Card>
 
-        <Card className="shadow-sm overflow-hidden">
+        <Card className="shadow-sm overflow-hidden text-foreground">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
               <Loader2 className="w-8 h-8 animate-spin mb-4 text-accent" />
