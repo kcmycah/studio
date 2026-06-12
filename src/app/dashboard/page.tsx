@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useUser, useFirestore, useCollection } from "@/firebase";
-import { collection, query, where, getDocs, doc, deleteDoc, orderBy, limit } from "firebase/firestore";
+import { collection, query, getDocs, doc, deleteDoc, orderBy, limit } from "firebase/firestore";
 import { AISystem, Assessment } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,9 +14,7 @@ import {
   Bot, 
   PlusCircle,
   Loader2,
-  Layers,
   MoreVertical,
-  Trash2,
   ShieldCheck,
   Play
 } from "lucide-react";
@@ -54,6 +52,7 @@ export default function Dashboard() {
     }
 
     const fetchData = async () => {
+      setLoadingLatest(true);
       const stats: Record<string, { latest: Assessment, count: number }> = {};
       for (const system of systems) {
         // Query the subcollection for each system specifically
@@ -62,12 +61,16 @@ export default function Dashboard() {
           orderBy("createdAt", "desc"),
           limit(1)
         );
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          stats[system.id] = {
-            latest: { id: snap.docs[0].id, ...snap.docs[0].data() } as Assessment,
-            count: 1
-          };
+        try {
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            stats[system.id] = {
+              latest: { id: snap.docs[0].id, ...snap.docs[0].data() } as Assessment,
+              count: 1
+            };
+          }
+        } catch (e) {
+          console.error(`Error fetching latest for ${system.id}:`, e);
         }
       }
       setSystemStats(stats);
@@ -94,7 +97,7 @@ export default function Dashboard() {
         <main className="flex-1 md:ml-[260px] p-8 pt-24 md:pt-8 max-w-7xl mx-auto w-full">
           <header className="flex justify-between items-center mb-10">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Workspace</h1>
+              <h1 className="text-3xl font-bold tracking-tight text-foreground">Workspace</h1>
               <p className="text-muted-foreground mt-1">Manage and monitor your inclusive AI endpoints.</p>
             </div>
             <div className="flex gap-3">
@@ -103,16 +106,16 @@ export default function Dashboard() {
             </div>
           </header>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {systemsLoading && !systems ? (
               Array(3).fill(0).map((_, i) => (
-                <Card key={i} className="animate-pulse bg-muted h-[200px]" />
+                <Card key={i} className="animate-pulse bg-muted/20 h-[280px]" />
               ))
             ) : (
               systems?.map((system) => {
                 const data = systemStats[system.id];
                 return (
-                  <Card key={system.id} className="hover:border-accent/50 transition-all flex flex-col group relative overflow-hidden">
+                  <Card key={system.id} className="hover:border-accent/50 transition-all flex flex-col group relative overflow-hidden bg-card/50">
                     <CardHeader className="pb-4">
                       <div className="flex justify-between">
                         <Badge variant="secondary" className="text-[10px] font-bold uppercase">{system.type}</Badge>
@@ -125,12 +128,12 @@ export default function Dashboard() {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
-                      <CardTitle className="text-xl font-bold mt-2 truncate">{system.name}</CardTitle>
-                      <CardDescription className="truncate text-xs font-mono opacity-50">{system.url}</CardDescription>
+                      <CardTitle className="text-xl font-bold mt-2 truncate text-foreground">{system.name}</CardTitle>
+                      <CardDescription className="truncate text-[10px] font-mono opacity-50">{system.url}</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-grow">
                       {loadingLatest ? (
-                        <Loader2 className="w-4 h-4 animate-spin mx-auto text-accent" />
+                        <div className="flex items-center justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-accent" /></div>
                       ) : data ? (
                         <div className="space-y-4">
                           <div className="bg-muted/30 p-4 rounded-xl flex items-center justify-between">
@@ -145,8 +148,8 @@ export default function Dashboard() {
                           </div>
                         </div>
                       ) : (
-                        <div className="py-8 text-center border-2 border-dashed rounded-xl flex flex-col items-center gap-2">
-                           <ShieldCheck className="w-6 h-6 text-muted-foreground/30" />
+                        <div className="py-8 text-center border-2 border-dashed rounded-xl flex flex-col items-center gap-2 opacity-50">
+                           <ShieldCheck className="w-6 h-6 text-muted-foreground" />
                            <p className="text-xs text-muted-foreground italic">No assessments run yet.</p>
                         </div>
                       )}
@@ -166,10 +169,10 @@ export default function Dashboard() {
           </div>
           
           {systems?.length === 0 && !systemsLoading && (
-            <div className="text-center py-20 bg-muted/20 rounded-3xl border-2 border-dashed">
+            <div className="text-center py-20 bg-muted/10 rounded-3xl border-2 border-dashed border-muted">
               <Bot className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
               <h3 className="text-xl font-bold mb-2">No AI systems registered</h3>
-              <p className="text-muted-foreground mb-6 max-w-sm mx-auto">Start by adding an AI endpoint or chatbot to your inventory for accessibility monitoring.</p>
+              <p className="text-muted-foreground mb-6 max-w-sm mx-auto text-sm">Start by adding an AI endpoint or chatbot to your inventory for accessibility monitoring.</p>
               <Button asChild className="bg-accent text-white"><Link href="/systems/new">Register First System</Link></Button>
             </div>
           )}

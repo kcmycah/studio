@@ -8,6 +8,7 @@ service cloud.firestore {
     }
 
     // Helper: check if parent system is owned by the user
+    // Used for subcollection security in ai_systems/{systemId}/assessments/{assessmentId}
     function isSystemOwner(systemId) {
       let systemPath = /databases/$(database)/documents/ai_systems/$(systemId);
       return request.auth != null && get(systemPath).data.userId == request.auth.uid;

@@ -14,10 +14,10 @@ Run these commands in your local terminal to prepare your code for the cloud:
 git init
 
 # Add all files to the staging area
-git add .
+git add --all
 
 # Create your first commit
-git commit -m "Initial commit: Production DISA Pipeline"
+git commit -m "Add full DISA app source code with subcollection architecture"
 
 # Create a public GitHub repository and push your code
 git remote add origin https://github.com/kcmycah/disa-app.git
@@ -30,7 +30,7 @@ git push -u origin main
 2. Project: **disa-ec810** (already configured in the app).
 3. Enable **Authentication** (Email/Password provider).
 4. Create a **Cloud Firestore** database in **Production Mode**.
-5. The Security Rules are already provided in `firestore.rules`.
+5. The Security Rules are already provided in `firestore.rules`. Ensure you deploy them.
 
 ### 3. Deploy to Vercel
 Install the Vercel CLI and link your project:
@@ -46,7 +46,12 @@ vercel link --yes
 ```
 
 ### 4. Set Environment Variables
-In your Vercel Project Settings, add the variables from your `.env` file. Ensure `NEXT_PUBLIC_APP_URL` is set to your production domain (e.g., https://disa-app.vercel.app).
+In your Vercel Project Settings, add the variables from your `.env` file. Critical variables:
+- `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+- `NEXT_PUBLIC_FIREBASE_APP_ID`
+- `GEMINI_API_KEY` (Required for AI generation)
+- `RESEND_API_KEY` (Required for Email briefs)
 
 ### 5. Final Production Push
 Once environment variables are set, trigger the production build:
@@ -57,8 +62,9 @@ vercel --prod
 
 ## Architecture Notes
 - **Subcollection Model**: High-performance nested path structure: `ai_systems/{id}/assessments`.
-- **Path-Scoped Security**: Firestore rules verify ownership at the parent system level.
-- **Deterministic Scoring**: Audit results are URL-seeded for stable benchmarking.
+- **Path-Scoped Security**: Firestore rules verify ownership at the parent system level for nested audit reports.
+- **Genkit Integration**: Specialized GenAI flows for executive summaries and persona impact analysis.
+- **Deterministic Scoring**: Audit results are URL-seeded for stable benchmarking across versions.
 
 ---
 Built for the inclusive future of AI.

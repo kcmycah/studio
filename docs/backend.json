@@ -100,15 +100,15 @@
     },
     "/ai_systems/{systemId}/assessments/{assessmentId}": {
       "schema": "Assessment",
-      "description": "System-nested records of DISA audits."
+      "description": "System-nested records of DISA audits. This path-scoped architecture ensures data isolation and performance."
     },
     "/testRuns/{runId}": {
       "schema": "TestRun",
-      "description": "Individual persona test results."
+      "description": "Individual persona test results for cross-system data analysis."
     },
     "/feedback/{feedbackId}": {
       "schema": "Feedback",
-      "description": "User reported issues."
+      "description": "User reported accessibility issues."
     }
   }
 }

@@ -47,13 +47,13 @@ export function useCollection<T = DocumentData>(
       let allConstraints = [...constraints];
       
       /**
-       * Automatic scoping for protected collections.
+       * Automatic scoping for protected top-level collections.
        */
       const protectedPaths = ['ai_systems', 'testRuns', 'feedback', 'users'];
       const isTopLevelProtected = !path.includes('/') && protectedPaths.includes(path);
       
-      // We only inject userId filter for top-level collections where it's required.
-      // Subcollections like ai_systems/{id}/assessments are path-scoped and don't require broad 'list' rules.
+      // We only inject userId filter for top-level collections where it's required for listing.
+      // Subcollections like ai_systems/{id}/assessments are path-scoped and don't require broad 'list' filters.
       if (isTopLevelProtected) {
         const hasUserIdFilter = constraints.some(c => c.toString().includes('userId'));
         if (!hasUserIdFilter) {
