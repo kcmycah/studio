@@ -1,0 +1,23 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "onboarding-fairness",
+      "description": "A high-contrast illustration of a shield and a scale, representing AI fairness and security.",
+      "imageUrl": "https://picsum.photos/seed/fairness/800/600",
+      "imageHint": "fairness shield"
+    },
+    {
+      "id": "onboarding-personas",
+      "description": "Abstract icons of diverse users, representing inclusive design and persona simulation.",
+      "imageUrl": "https://picsum.photos/seed/personas/800/600",
+      "imageHint": "inclusive personas"
+    },
+    {
+      "id": "onboarding-scoring",
+      "description": "A clean data chart showing rising accessibility scores over time.",
+      "imageUrl": "https://picsum.photos/seed/scoring/800/600",
+      "imageHint": "data progress"
+    }
+  ]
+}
