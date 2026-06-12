@@ -28,9 +28,8 @@ service cloud.firestore {
 
     // testRuns – direct ownership field
     match /testRuns/{document} {
-      allow read: if isOwner(resource.data.userId);
+      allow read, write, delete: if isOwner(resource.data.userId);
       allow create: if request.auth != null && isOwner(request.resource.data.userId);
-      allow update, delete: if isOwner(resource.data.userId);
     }
 
     // user_preferences

@@ -85,37 +85,6 @@
           }
         }
       }
-    },
-    "UserPreference": {
-      "title": "User Preference",
-      "description": "Persistent UI settings and filters for a user.",
-      "type": "object",
-      "properties": {
-        "filters": {
-          "type": "object",
-          "properties": {
-            "wcagLevels": { "type": "array", "items": { "type": "string" } },
-            "severities": { "type": "array", "items": { "type": "string" } },
-            "personas": { "type": "array", "items": { "type": "string" } },
-            "onlyFailed": { "type": "boolean" },
-            "onlyPassed": { "type": "boolean" }
-          }
-        },
-        "dashboardView": { "type": "string", "enum": ["grid", "list"] },
-        "updatedAt": { "type": "object", "format": "date-time" }
-      }
-    },
-    "Feedback": {
-      "title": "Feedback",
-      "description": "Accessibility feedback or issue report from a user.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "email": { "type": "string" },
-        "issue": { "type": "string" },
-        "createdAt": { "type": "object", "format": "date-time" }
-      },
-      "required": ["userId", "issue", "createdAt"]
     }
   },
   "auth": {

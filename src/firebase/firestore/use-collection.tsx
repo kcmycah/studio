@@ -30,6 +30,7 @@ export function useCollection<T = DocumentData>(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  // Memoize constraints to prevent unnecessary effect re-runs
   const constraintsHash = useMemo(() => {
     try {
       return JSON.stringify(constraints.map(c => c.toString()));
@@ -44,15 +45,15 @@ export function useCollection<T = DocumentData>(
     try {
       let allConstraints = [...constraints];
       
-      // Automatic scoping for top-level user-owned collections
+      // Automatic scoping for top-level user-owned collections.
+      // Subcollections (containing '/') are handled by parent ownership rules.
       const protectedTopLevel = ['ai_systems', 'testRuns', 'feedback', 'user_preferences'];
       
-      // If the path is a simple string and in our protected list, inject the userId filter
       if (!path.includes('/') && protectedTopLevel.includes(path)) {
         allConstraints.push(where('userId', '==', user.uid));
       }
 
-      // Add a safety limit if none exists to keep performance high
+      // Add a safety limit if none exists
       if (!constraints.some(c => c.toString().includes('limit'))) {
         allConstraints.push(firestoreLimit(100));
       }
@@ -86,7 +87,6 @@ export function useCollection<T = DocumentData>(
         setLoading(false);
       },
       async (err) => {
-        // Surface rich contextual errors for security rule violations
         const permissionError = new FirestorePermissionError({
           path: path || 'unknown',
           operation: 'list',

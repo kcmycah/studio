@@ -16,7 +16,6 @@ Configure the following in your deployment environment (e.g., Vercel):
 - `GEMINI_API_KEY`
 - `LEMON_SQUEEZY_API_KEY`
 - `LEMON_SQUEEZY_STORE_ID`
-- `LEMON_SQUEEZY_WEBHOOK_SECRET`
 - `RESEND_API_KEY`
 - `NEXT_PUBLIC_APP_URL` (Your production domain)
 
@@ -32,22 +31,13 @@ git commit -m "Initial commit: Production-ready DISA Pipeline"
 gh repo create disa-app --public --source=. --remote=origin --push
 ```
 
-### 4. Build & Vercel Deploy
+### 4. Vercel Deployment
 ```bash
-npm run build
+vercel login
 vercel --prod
 ```
 
-## Features
-- **Deterministic Persona Scans**: Audit systems across 7 key disability personas.
-- **Subcollection Architecture**: Secure, path-scoped storage for assessments.
-- **AI Executive Summaries**: Genkit-powered summaries for stakeholders.
-- **Accessible UI**: High-contrast, keyboard-navigable interface built with ShadCN and Tailwind.
-
-## Technical Stack
-- **Next.js 15**: App Router with async parameter handling.
-- **Firebase**: Firestore (Subcollections) & Auth.
-- **Genkit**: Gemini-powered fairness and impact analysis.
-- **ShadCN UI**: Professional, accessible component library.
-
-Built with ❤️ for a more inclusive AI future.
+## Architecture
+- **Nested Assessments**: Assessments are stored per-system (`ai_systems/{id}/assessments`) to ensure strict data isolation.
+- **Intelligent Scoping**: The `useCollection` hook automatically injects security filters for user-owned collections.
+- **GenAI Summaries**: Uses Genkit and Gemini to generate executive summaries and persona-impact explanations.

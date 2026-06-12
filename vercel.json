@@ -3,5 +3,8 @@
   "version": 2,
   "framework": "nextjs",
   "regions": ["sfo1"],
-  "cleanUrls": true
+  "cleanUrls": true,
+  "github": {
+    "silent": true
+  }
 }
