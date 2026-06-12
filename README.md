@@ -1,3 +1,4 @@
+
 # AuditAccess - Inclusive AI Audit Pipeline
 
 AuditAccess is a production-grade platform for auditing AI systems for accessibility and fairness using the **DISA (Disability-Inclusive System Assessment)** framework.
@@ -20,7 +21,7 @@ Configure the following in your deployment environment (e.g., Vercel):
 - `NEXT_PUBLIC_APP_URL` (Your production domain)
 
 ### 2. Firestore Security Rules
-This application uses a high-performance **subcollection architecture**. Rules are path-scoped to `ai_systems/{id}/assessments` to ensure data privacy and listing efficiency.
+This application uses a high-performance **subcollection architecture**. Rules are path-scoped to `ai_systems/{id}/assessments` to ensure data privacy and listing efficiency. These rules are automatically applied by the Firebase Studio watcher.
 
 ### 3. Repository Initialization
 ```bash

@@ -47,9 +47,8 @@ export function useCollection<T = DocumentData>(
       // Automatic scoping for top-level user-owned collections
       const protectedTopLevel = ['ai_systems', 'testRuns', 'feedback', 'user_preferences'];
       
-      // We check if the path is one of the protected top-level collections
-      if (protectedTopLevel.includes(path)) {
-        // Ensure the query only looks at the current user's documents
+      // If the path is a simple string and in our protected list, inject the userId filter
+      if (!path.includes('/') && protectedTopLevel.includes(path)) {
         allConstraints.push(where('userId', '==', user.uid));
       }
 

@@ -1,11 +1,13 @@
+
 import { NextRequest, NextResponse } from "next/server";
 import { initializeFirebase } from "@/firebase";
 import { collection, query, where, getDocs, doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { AISystem, UserProfile, TestRunResult } from "@/lib/types";
+import { AISystem, UserProfile } from "@/lib/types";
 import { computeDISAScore } from "@/lib/scoring";
 
 /**
  * Cron endpoint for scheduled monitoring.
+ * Now creates assessments in the high-performance subcollection path.
  */
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
@@ -73,7 +75,7 @@ export async function GET(req: NextRequest) {
           await setDoc(runRef, {
             ...res,
             assessmentId: assessmentRef.id,
-            systemId: system.id, // CRITICAL: Added for path scoping
+            systemId: system.id,
             userId: userDoc.id,
             createdAt: serverTimestamp()
           });
