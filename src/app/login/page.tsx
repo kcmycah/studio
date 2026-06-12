@@ -151,7 +151,7 @@ export default function LoginPage() {
                   <li>• <strong>Ad-blockers</strong> often block Firebase. Try disabling uBlock or AdBlock.</li>
                 )}
                 {errorDetails.code === 'auth/operation-not-allowed' && (
-                  <li>• <strong>Password Auth</strong> must be enabled in the Firebase Console under Authentication > Sign-in method.</li>
+                  <li>• <strong>Password Auth</strong> must be enabled in the Firebase Console under Authentication &gt; Sign-in method.</li>
                 )}
                 {(errorDetails.code === 'auth/unauthorized-domain' || errorDetails.message.includes('domain')) && (
                   <li>• This domain needs to be added to <strong>Authorized Domains</strong> in the Firebase Console.</li>
