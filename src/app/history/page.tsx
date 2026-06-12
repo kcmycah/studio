@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
@@ -52,6 +51,7 @@ function HistoryContent() {
     const fetchData = async () => {
       setLoading(true);
       try {
+        // Fetch all systems owned by user
         const systemsQuery = query(
           collection(db, "ai_systems"), 
           where("userId", "==", user.uid)
@@ -61,6 +61,7 @@ function HistoryContent() {
         
         const allAssessments: (Assessment & { systemName: string })[] = [];
         
+        // For each system, fetch assessments from its subcollection
         for (const system of systems) {
           if (systemIdFilter && system.id !== systemIdFilter) continue;
           
@@ -80,6 +81,7 @@ function HistoryContent() {
           });
         }
         
+        // Sort all aggregated assessments by date
         setAssessments(allAssessments.sort((a, b) => {
           const dateA = a.createdAt?.toMillis?.() || 0;
           const dateB = b.createdAt?.toMillis?.() || 0;
@@ -109,7 +111,8 @@ function HistoryContent() {
   };
 
   const filtered = assessments.filter(a => 
-    a.systemName.toLowerCase().includes(filter.toLowerCase())
+    a.systemName.toLowerCase().includes(filter.toLowerCase()) ||
+    a.version.toLowerCase().includes(filter.toLowerCase())
   );
 
   return (
@@ -119,7 +122,7 @@ function HistoryContent() {
         <header className="mb-10 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Audit History</h1>
-            <p className="text-muted-foreground mt-1">Review your inclusive performance records.</p>
+            <p className="text-muted-foreground mt-1">Review your inclusive performance records across all systems.</p>
           </div>
           {systemIdFilter && <Button variant="ghost" asChild><Link href="/history">Clear Filter</Link></Button>}
         </header>
@@ -128,7 +131,7 @@ function HistoryContent() {
           <div className="relative flex-grow">
             <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
             <Input 
-              placeholder="Search by system name..." 
+              placeholder="Search by system name or version..." 
               className="pl-10 h-11" 
               value={filter}
               onChange={e => setFilter(e.target.value)}
@@ -147,6 +150,7 @@ function HistoryContent() {
               <TableHeader className="bg-muted/30">
                 <TableRow>
                   <TableHead className="font-bold">AI System</TableHead>
+                  <TableHead className="font-bold">Version</TableHead>
                   <TableHead className="font-bold">Date</TableHead>
                   <TableHead className="font-bold">DISA Score</TableHead>
                   <TableHead className="font-bold">Status</TableHead>
@@ -162,6 +166,7 @@ function HistoryContent() {
                         <span>{item.systemName}</span>
                       </div>
                     </TableCell>
+                    <TableCell className="text-xs font-mono">v{item.version}</TableCell>
                     <TableCell className="text-muted-foreground text-xs font-medium">
                       {item.createdAt?.toDate?.().toLocaleDateString() || "N/A"}
                     </TableCell>
@@ -177,16 +182,18 @@ function HistoryContent() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="sm" asChild>
+                        <Button variant="ghost" size="sm" asChild title="View Results">
                           <Link href={`/systems/${item.systemId}/assessments/${item.id}/results`}><Eye className="w-4 h-4" /></Link>
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setDeletingId({systemId: item.systemId, id: item.id})} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="sm" onClick={() => setDeletingId({systemId: item.systemId, id: item.id})} className="text-destructive" title="Delete Report">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
                 ))}
                 {filtered.length === 0 && (
-                  <TableRow><TableCell colSpan={5} className="text-center py-24 italic">No matching records found.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-24 italic">No matching records found.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -195,7 +202,7 @@ function HistoryContent() {
 
         <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
           <AlertDialogContent>
-            <AlertDialogHeader><AlertDialogTitle>Delete Report?</AlertDialogTitle><AlertDialogDescription>This will permanently remove the record.</AlertDialogDescription></AlertDialogHeader>
+            <AlertDialogHeader><AlertDialogTitle>Delete Report?</AlertDialogTitle><AlertDialogDescription>This will permanently remove the record from your history. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
             <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteAssessment} className="bg-destructive text-white">Delete</AlertDialogAction></AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
