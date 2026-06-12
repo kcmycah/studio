@@ -1,18 +1,46 @@
+
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { initializeFirebase } from './index';
 import { FirebaseProvider } from './provider';
-import { AlertCircle, KeyRound } from 'lucide-react';
+import { AlertCircle, KeyRound, Loader2 } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
+/**
+ * Client-side component to handle Firebase initialization and configuration checking.
+ * Includes a mount-check to prevent hydration mismatches between SSR and client state.
+ */
 export function FirebaseClientProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { app, firestore, auth } = useMemo(() => initializeFirebase(), []);
+  const [mounted, setMounted] = useState(false);
+  const firebase = useMemo(() => initializeFirebase(), []);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // During SSR and the initial client-side pass, render a neutral loading state
+  // to avoid hydration mismatches between the server (which can't init Firebase)
+  // and the client (which can).
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-10 h-10 animate-spin text-accent mx-auto opacity-20" />
+          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground animate-pulse">
+            Establishing Secure Pipeline
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const { app, firestore, auth } = firebase;
 
   // Graceful fallback UI for missing or invalid configuration
   if (!app || !firestore || !auth) {
