@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from "next/server";
 import { PersonaType, AccessibilityIssue, TestRunResult } from "@/lib/types";
 import { computeAccessibilitySegmentScore } from '@/lib/scoring';
@@ -28,15 +29,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid personas provided" }, { status: 400 });
     }
 
-    // Ensure results are deterministic for the same URL
     const seed = getSeed(url);
     const qualityFactor = (seed % 100) / 100;
 
-    // 1. Accessibility Segment (Deterministic simulation)
     const results: TestRunResult[] = (personas as PersonaType[]).map((persona, index) => {
       const personaSeed = (seed + index * 13) % 100;
-      
-      // Success threshold based on URL "quality"
       const failureThreshold = 25 + (qualityFactor * 30);
       const success = personaSeed > failureThreshold;
 
@@ -71,8 +68,6 @@ export async function POST(req: NextRequest) {
     });
 
     const accessibilitySegmentScore = computeAccessibilitySegmentScore(results);
-
-    // 2. Domain Scores (Deterministic Fallbacks)
     const transparencyScore = Math.round(35 + (qualityFactor * 45)); 
     const equityDataScore = Math.round(30 + ((1 - qualityFactor) * 40));
     

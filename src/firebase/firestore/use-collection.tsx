@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -17,10 +18,7 @@ import { FirestorePermissionError, type SecurityRuleContext } from '../errors';
 
 /**
  * Intelligent hook for fetching Firestore collections with automatic security scoping.
- * It automatically injects userId filters for protected collections to satisfy security rules.
- *
- * @param path The collection path (e.g., 'assessments')
- * @param constraints Optional Firestore query constraints (where, orderBy, limit, etc.)
+ * Scopes queries to the current user's data for protected top-level collections.
  */
 export function useCollection<T = DocumentData>(
   path: string | null,
@@ -32,7 +30,6 @@ export function useCollection<T = DocumentData>(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  // We use a stable hash of the constraints to avoid infinite re-render loops
   const constraintsHash = useMemo(() => {
     try {
       return JSON.stringify(constraints.map(c => c.toString()));
@@ -47,21 +44,13 @@ export function useCollection<T = DocumentData>(
     try {
       let allConstraints = [...constraints];
       
-      // 🔧 AUTOMATIC SECURITY SCOPING
-      const protectedCollections = [
-        'assessments', 
-        'disa_assessments', 
-        'ai_systems', 
-        'testRuns', 
-        'feedback'
-      ];
-      
-      if (protectedCollections.includes(path)) {
-        console.log(`[useCollection] Scoping query for path: ${path} with userId: ${user.uid}`);
+      // Automatic scoping for top-level user-owned collections
+      const protectedTopLevel = ['ai_systems', 'testRuns', 'feedback'];
+      if (protectedTopLevel.includes(path)) {
         allConstraints.push(where('userId', '==', user.uid));
       }
 
-      // Automatically add a safety limit if one isn't provided.
+      // Add a safety limit if none exists
       if (!constraints.some(c => c.toString().includes('limit'))) {
         allConstraints.push(firestoreLimit(100));
       }
@@ -74,7 +63,6 @@ export function useCollection<T = DocumentData>(
   }, [db, path, user, constraintsHash]);
 
   useEffect(() => {
-    // If we're not logged in or have no path, reset state
     if (!path || !user) {
       setData([]);
       setLoading(false);
@@ -97,7 +85,6 @@ export function useCollection<T = DocumentData>(
       },
       async (err) => {
         console.error(`[useCollection] Snapshot error for ${path}:`, err);
-        // Surface rich contextual errors for security rule violations
         const permissionError = new FirestorePermissionError({
           path: path || 'unknown',
           operation: 'list',

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -26,7 +27,8 @@ import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export default function VersionHistoryPage() {
-  const { systemId } = useParams();
+  const params = useParams();
+  const systemId = params?.systemId as string;
   const router = useRouter();
   const db = useFirestore();
   const { user } = useUser();
@@ -35,13 +37,13 @@ export default function VersionHistoryPage() {
 
   useEffect(() => {
     if (!systemId || !db) return;
-    const sysRef = doc(db, "ai_systems", systemId as string);
+    const sysRef = doc(db, "ai_systems", systemId);
     getDoc(sysRef).then(snap => {
       if (snap.exists()) setSystem({ id: snap.id, ...snap.data() } as AISystem);
     });
   }, [systemId, db]);
 
-  // Using subcollection path: ai_systems/{systemId}/assessments
+  // Assessment subcollection query
   const { data: assessments, loading } = useCollection<Assessment>(
     systemId ? `ai_systems/${systemId}/assessments` : null,
     [orderBy("createdAt", "desc")]

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -38,7 +39,10 @@ import {
 } from "@/components/ui/accordion";
 
 export default function AssessmentResultsPage() {
-  const { systemId, assessmentId } = useParams();
+  const params = useParams();
+  const systemId = params?.systemId as string;
+  const assessmentId = params?.assessmentId as string;
+  
   const db = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
@@ -54,8 +58,8 @@ export default function AssessmentResultsPage() {
   useEffect(() => {
     if (!systemId || !assessmentId || !db || !user) return;
     
-    const assessmentRef = doc(db, "ai_systems", systemId as string, "assessments", assessmentId as string);
-    const systemRef = doc(db, "ai_systems", systemId as string);
+    const assessmentRef = doc(db, "ai_systems", systemId, "assessments", assessmentId);
+    const systemRef = doc(db, "ai_systems", systemId);
 
     Promise.all([
       getDoc(assessmentRef),
@@ -75,7 +79,7 @@ export default function AssessmentResultsPage() {
 
       const q = query(
         collection(db, "testRuns"), 
-        where("assessmentId", "==", assessmentId as string),
+        where("assessmentId", "==", assessmentId),
         where("userId", "==", user.uid),
         limit(100)
       );
