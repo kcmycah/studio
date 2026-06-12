@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -48,8 +47,7 @@ export function useCollection<T = DocumentData>(
     try {
       let allConstraints = [...constraints];
       
-      // 🔧 FIX: AUTOMATIC SECURITY SCOPING
-      // These collections have security rules that require a userId filter for listing.
+      // 🔧 AUTOMATIC SECURITY SCOPING
       const protectedCollections = [
         'assessments', 
         'disa_assessments', 
@@ -59,9 +57,7 @@ export function useCollection<T = DocumentData>(
       ];
       
       if (protectedCollections.includes(path)) {
-        // Always append the userId filter to satisfy security rules for list operations.
-        // Firestore rules cannot verify ownership during a 'list' operation unless
-        // the query itself is restricted to that user's ID.
+        console.log(`[useCollection] Scoping query for path: ${path} with userId: ${user.uid}`);
         allConstraints.push(where('userId', '==', user.uid));
       }
 
@@ -72,7 +68,7 @@ export function useCollection<T = DocumentData>(
 
       return query(collection(db, path), ...allConstraints);
     } catch (e) {
-      console.error("Query construction error:", e);
+      console.error("[useCollection] Query construction error:", e);
       return null;
     }
   }, [db, path, user, constraintsHash]);
@@ -100,6 +96,7 @@ export function useCollection<T = DocumentData>(
         setLoading(false);
       },
       async (err) => {
+        console.error(`[useCollection] Snapshot error for ${path}:`, err);
         // Surface rich contextual errors for security rule violations
         const permissionError = new FirestorePermissionError({
           path: path || 'unknown',
