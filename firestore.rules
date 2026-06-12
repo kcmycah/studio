@@ -2,48 +2,46 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper: check if user owns the document
+    // Helper to check ownership
     function isOwner(userId) {
       return request.auth != null && request.auth.uid == userId;
     }
 
-    // AI systems
-    match /ai_systems/{doc} {
-      allow read: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId);
-      allow update, delete: if isOwner(resource.data.userId);
+    // Users collection
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if isOwner(userId);
     }
 
-    // Assessments
-    match /assessments/{doc} {
+    // AI Systems
+    match /ai_systems/{systemId} {
       allow read: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId);
-      allow update, delete: if isOwner(resource.data.userId);
+      allow write: if isOwner(request.resource.data.userId);
     }
 
-    // Test runs
-    match /testRuns/{doc} {
-      // Rule by userId field directly (populated in code) for query performance
+    // Assessments (this is the one causing the error)
+    match /assessments/{assessmentId} {
       allow read: if isOwner(resource.data.userId);
+      allow write: if isOwner(resource.data.userId);
       allow create: if isOwner(request.resource.data.userId);
-      allow update, delete: if isOwner(resource.data.userId);
+    }
+
+    // DISA Assessments (for version comparison)
+    match /disa_assessments/{disaId} {
+      allow read: if isOwner(resource.data.userId);
+      allow write: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+    }
+
+    // Test Runs
+    match /testRuns/{runId} {
+      allow read: if isOwner(get(/databases/$(database)/documents/assessments/$(resource.data.assessmentId)).data.userId);
+      allow write: if isOwner(resource.data.userId);
     }
 
     // User preferences
     match /user_preferences/{userId} {
       allow read, write: if isOwner(userId);
-    }
-
-    // User profiles
-    match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if isOwner(userId);
-    }
-    
-    // Feedback
-    match /feedback/{doc} {
-       allow create: if request.auth != null;
-       allow read: if false;
     }
   }
 }
