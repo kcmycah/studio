@@ -1,4 +1,3 @@
-
 # AuditAccess - Inclusive AI Audit Pipeline
 
 AuditAccess is a production-grade platform for auditing AI systems for accessibility and fairness using the **DISA (Disability-Inclusive System Assessment)** framework.
@@ -21,22 +20,28 @@ Configure the following in your deployment environment (e.g., Vercel):
 - `NEXT_PUBLIC_APP_URL` (Your production domain)
 
 ### 2. Firestore Security Rules
-This application uses a high-performance **subcollection architecture**. The rules are located in `firestore.rules` and must be deployed to your Firebase project to enable path-scoped data security.
+This application uses a high-performance **subcollection architecture**. Rules are path-scoped to `ai_systems/{id}/assessments` to ensure data privacy and listing efficiency.
 
-### 3. Push to GitHub
+### 3. Repository Initialization
 ```bash
 git init
 git add .
 git commit -m "Initial commit: Production-ready DISA Pipeline"
+# Using GitHub CLI (gh)
 gh repo create disa-app --public --source=. --remote=origin --push
+```
+
+### 4. Build & Vercel Deploy
+```bash
+npm run build
+vercel --prod
 ```
 
 ## Features
 - **Deterministic Persona Scans**: Audit systems across 7 key disability personas.
-- **Subcollection Architecture**: Secure, path-scoped storage for assessments (`ai_systems/{id}/assessments`).
+- **Subcollection Architecture**: Secure, path-scoped storage for assessments.
 - **AI Executive Summaries**: Genkit-powered summaries for stakeholders.
 - **Accessible UI**: High-contrast, keyboard-navigable interface built with ShadCN and Tailwind.
-- **Professional Exports**: Generate PDF briefings and CSV audit logs.
 
 ## Technical Stack
 - **Next.js 15**: App Router with async parameter handling.

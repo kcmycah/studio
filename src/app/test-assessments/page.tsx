@@ -1,97 +1,131 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
-import { useFirestore, useUser } from '@/firebase';
-import { Loader2, ShieldCheck, AlertCircle } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
+import { useFirestore, useUser, useCollection } from '@/firebase';
+import { Loader2, ShieldCheck, AlertCircle, Layers, Info } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AISystem } from '@/lib/types';
 
+/**
+ * Diagnostic tool updated for the Subcollection Architecture.
+ * Verifies that we can fetch systems and then their nested assessments.
+ */
 export default function TestAssessmentsPage() {
   const db = useFirestore();
   const { user, loading: authLoading } = useUser();
-  const [assessments, setAssessments] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data: systems, loading: systemsLoading } = useCollection<AISystem>("ai_systems");
+  
+  const [testResults, setTestResults] = useState<{
+    systemId: string;
+    systemName: string;
+    assessments: any[];
+    error: string | null;
+  }[]>([]);
+  const [running, setRunning] = useState(false);
 
-  useEffect(() => {
-    if (authLoading || !user || !db) return;
+  const runDiagnostic = async () => {
+    if (!user || !db || !systems) return;
+    setRunning(true);
+    const results = [];
 
-    const fetchDirectly = async () => {
-      setLoading(true);
-      setError(null);
+    for (const system of systems) {
       try {
-        console.log('[TestPage] Attempting direct query for user:', user.uid);
-        const q = query(
-          collection(db, 'assessments'), 
-          where('userId', '==', user.uid),
-          limit(10)
-        );
+        // Testing path-scoped subcollection access
+        const path = `ai_systems/${system.id}/assessments`;
+        const q = query(collection(db, path), orderBy("createdAt", "desc"), limit(5));
         const snap = await getDocs(q);
-        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setAssessments(data);
-        console.log('[TestPage] Success! Found:', data.length, 'assessments');
+        
+        results.push({
+          systemId: system.id,
+          systemName: system.name,
+          assessments: snap.docs.map(d => ({ id: d.id, ...d.data() })),
+          error: null
+        });
       } catch (err: any) {
-        console.error('[TestPage] Direct fetch error:', err);
-        setError(err.message || 'Unknown permission error');
-      } finally {
-        setLoading(false);
+        results.push({
+          systemId: system.id,
+          systemName: system.name,
+          assessments: [],
+          error: err.message
+        });
       }
-    };
-
-    fetchDirectly();
-  }, [user, db, authLoading]);
+    }
+    setTestResults(results);
+    setRunning(false);
+  };
 
   if (authLoading) return <div className="p-8 flex items-center gap-2"><Loader2 className="animate-spin" /> Verifying Auth...</div>;
   if (!user) return <div className="p-8"><Alert variant="destructive"><AlertTitle>Not Authenticated</AlertTitle><AlertDescription>Please log in to run this diagnostic.</AlertDescription></Alert></div>;
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-8">
+    <div className="p-8 max-w-5xl mx-auto space-y-8">
       <header>
         <h1 className="text-3xl font-bold flex items-center gap-2">
-          <ShieldCheck className="text-accent" /> Security Rules Diagnostic
+          <ShieldCheck className="text-accent" /> Subcollection Diagnostic
         </h1>
-        <p className="text-muted-foreground">Testing direct Firestore access for the 'assessments' collection.</p>
+        <p className="text-muted-foreground mt-2">Verifying path-scoped access for <code>ai_systems/&#123;id&#125;/assessments</code>.</p>
       </header>
 
-      {error ? (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Permission Denied</AlertTitle>
-          <AlertDescription>
-            <p className="font-mono text-xs mt-2 bg-black/10 p-2 rounded">{error}</p>
-            <p className="mt-4 text-sm font-semibold italic">
-              Verification: If you see "Missing or insufficient permissions", your Security Rules are still blocking the query despite the userId filter.
-            </p>
-          </AlertDescription>
-        </Alert>
-      ) : loading ? (
-        <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="animate-spin" /> Querying Firestore...</div>
-      ) : (
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="bg-accent/5 border-accent/20">
           <CardHeader>
-            <CardTitle>Direct Query Results</CardTitle>
-          </header>
+            <CardTitle className="text-sm font-bold flex items-center gap-2">
+              <Info className="w-4 h-4" /> System Status
+            </CardTitle>
+          </CardHeader>
           <CardContent>
-            <div className="bg-black/5 p-4 rounded-xl border font-mono text-xs overflow-auto max-h-[400px]">
-              {assessments.length > 0 ? (
-                <pre>{JSON.stringify(assessments, null, 2)}</pre>
-              ) : (
-                <p className="italic text-muted-foreground">No assessments found for UID: {user.uid}</p>
-              )}
-            </div>
+            {systemsLoading ? (
+              <Loader2 className="animate-spin text-accent" />
+            ) : (
+              <p className="text-sm">Found <strong>{systems?.length || 0}</strong> registered AI systems.</p>
+            )}
+            <button 
+              onClick={runDiagnostic}
+              disabled={running || !systems?.length}
+              className="mt-4 w-full bg-accent text-white py-2 rounded-lg font-bold disabled:opacity-50"
+            >
+              {running ? "Running Scan..." : "Scan All Subcollections"}
+            </button>
           </CardContent>
         </Card>
-      )}
+      </div>
 
-      <footer className="text-xs text-muted-foreground bg-muted p-4 rounded-lg">
-        <p className="font-bold mb-1">Check Browser Console (F12):</p>
-        <ul className="list-disc list-inside">
-          <li>Check for "[TestPage] Attempting direct query"</li>
-          <li>If it says "Success!", the Security Rules are working correctly.</li>
-          <li>If the History page still fails, the issue is likely in the useCollection hook's implementation.</li>
-        </ul>
-      </footer>
+      <div className="space-y-4">
+        {testResults.map((res) => (
+          <Card key={res.systemId} className={res.error ? "border-destructive/50" : "border-emerald-500/20"}>
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-accent" /> {res.systemName}
+                </CardTitle>
+                {res.error ? (
+                  <span className="text-[10px] font-black uppercase text-destructive bg-destructive/10 px-2 py-1 rounded">Denied</span>
+                ) : (
+                  <span className="text-[10px] font-black uppercase text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded">Success</span>
+                )}
+              </div>
+              <CardDescription className="font-mono text-[10px]">Path: ai_systems/{res.systemId}/assessments</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {res.error ? (
+                <div className="bg-destructive/5 p-4 rounded-xl text-xs text-destructive font-mono border border-destructive/10">
+                  {res.error}
+                </div>
+              ) : (
+                <div className="bg-black/5 p-4 rounded-xl border font-mono text-[10px] overflow-auto max-h-[200px]">
+                  {res.assessments.length > 0 ? (
+                    <pre>{JSON.stringify(res.assessments, null, 2)}</pre>
+                  ) : (
+                    <p className="italic text-muted-foreground">No assessments found for this system.</p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
