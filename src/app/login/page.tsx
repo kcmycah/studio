@@ -150,7 +150,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
-      {/* Left Pane: Branding & Comprehensive Framework Explanation */}
+      {/* Left Pane: Branding & Framework Explanation */}
       <div className="hidden lg:flex flex-col justify-between p-12 bg-black text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,#5e6ad225,transparent)]" />
         <div className="relative z-10">
@@ -181,7 +181,7 @@ export default function LoginPage() {
                 <div>
                   <h4 className="text-lg font-bold mb-1">What is DISA?</h4>
                   <p className="text-sm text-white/50 leading-relaxed">
-                    The Disability-Inclusive System Assessment (DISA) weights accessibility alongside task completion. It ensures that users with disabilities can actually achieve their goals, not just interact with buttons.
+                    The Disability-Inclusive System Assessment (DISA) ensures that users with disabilities can actually achieve their goals, not just interact with buttons.
                   </p>
                 </div>
               </div>
@@ -195,21 +195,7 @@ export default function LoginPage() {
                 <div>
                   <h4 className="text-lg font-bold mb-1">Persona Simulations</h4>
                   <p className="text-sm text-white/50 leading-relaxed">
-                    We audit your AI endpoints through 7 key disability personas, including Blind, Deaf, Dyslexic, and Cognitive disabilities, to identify real-world functional barriers.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-5">
-                <div className="shrink-0">
-                  <div className="bg-white/10 p-3 rounded-2xl">
-                    <BarChart4 className="w-6 h-6 text-accent" />
-                  </div>
-                </div>
-                <div>
-                  <h4 className="text-lg font-bold mb-1">Strategic Briefings</h4>
-                  <p className="text-sm text-white/50 leading-relaxed">
-                    Automated executive reporting translates complex accessibility violations into business risk and legal exposure metrics for stakeholders.
+                    We audit your AI endpoints through 7 key disability personas, from Blind users to users with Cognitive disabilities, identifying real-world barriers.
                   </p>
                 </div>
               </div>
@@ -222,7 +208,6 @@ export default function LoginPage() {
             <span>WCAG 2.2 / SECTION 508</span>
             <span>GDPR COMPLIANT</span>
             <span>AI GOVERNANCE READY</span>
-            <span>v2.4 STABLE</span>
           </div>
         </div>
       </div>
@@ -235,11 +220,10 @@ export default function LoginPage() {
               <ShieldCheck className="w-10 h-10 text-accent" />
             </div>
             <h1 className="text-3xl font-black tracking-tight">AuditAccess</h1>
-            <p className="text-muted-foreground">The inclusive standard for AI accessibility.</p>
           </div>
 
           <div className="space-y-6">
-            <header className="space-y-2">
+            <header className="space-y-2 text-center lg:text-left">
               <h2 className="text-3xl font-black tracking-tight">
                 {isSignUp ? "Register Organization" : "Sign In"}
               </h2>
@@ -255,7 +239,7 @@ export default function LoginPage() {
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle className="font-bold uppercase text-[10px] tracking-widest">Configuration Missing</AlertTitle>
                 <AlertDescription className="text-xs">
-                  Firebase API Key not found. Please add your Firebase configuration to the <code className="bg-destructive/10 px-1 rounded">.env</code> file.
+                  Firebase API Key not found. Please add your Firebase configuration to the .env file.
                 </AlertDescription>
               </Alert>
             )}
@@ -264,25 +248,24 @@ export default function LoginPage() {
               <div className="space-y-3">
                 <Alert variant="destructive" className="bg-destructive/5 border-destructive/20">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertTitle className="font-bold uppercase text-[10px] tracking-widest">Intelligence & Diagnostics: {errorDetails.code}</AlertTitle>
+                  <AlertTitle className="font-bold uppercase text-[10px] tracking-widest">Diagnostics: {errorDetails.code}</AlertTitle>
                   <AlertDescription className="text-xs">{errorDetails.message}</AlertDescription>
                 </Alert>
                 
                 <div className="bg-accent/5 border border-accent/10 rounded-xl p-4 space-y-3">
                   <p className="text-[10px] font-black uppercase tracking-widest text-accent flex items-center gap-2">
-                    <Info className="w-3 h-3" /> Troubleshooting Pro-Tips
+                    <Info className="w-3 h-3" /> Troubleshooting Tips
                   </p>
                   <ul className="text-xs space-y-2 text-muted-foreground font-medium">
                     {errorDetails.code === 'auth/network-request-failed' && (
-                      <li>• <strong>Ad-blockers</strong> often block Firebase. Try disabling uBlock or AdBlock for this domain.</li>
+                      <li>• <strong>Ad-blockers</strong> often block Firebase. Try disabling them for this domain.</li>
                     )}
                     {errorDetails.code === 'auth/operation-not-allowed' && (
-                      <li>• <strong>Password Auth</strong> must be enabled in the Firebase Console under Authentication &gt; Sign-in method.</li>
+                      <li>• <strong>Email/Password</strong> provider must be enabled in the Firebase Console.</li>
                     )}
                     {(errorDetails.code === 'auth/unauthorized-domain' || errorDetails.message.includes('domain')) && (
                       <li>• This domain needs to be added to <strong>Authorized Domains</strong> in the Firebase Console.</li>
                     )}
-                    <li>• Ensure your corporate firewall allows connections to <code className="bg-accent/10 px-1 rounded">firebaseapp.com</code>.</li>
                   </ul>
                 </div>
               </div>
@@ -342,7 +325,7 @@ export default function LoginPage() {
                           />
                           <button
                             type="button"
-                            className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                            className="absolute right-3 top-3 text-muted-foreground"
                             onClick={() => setShowPassword(!showPassword)}
                           >
                             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -356,11 +339,11 @@ export default function LoginPage() {
 
                 <Button 
                   type="submit"
-                  className="w-full h-12 text-base font-black uppercase tracking-widest bg-accent text-white hover:bg-accent/90 shadow-lg shadow-accent/20" 
+                  className="w-full h-12 text-base font-black uppercase tracking-widest bg-accent text-white hover:bg-accent/90" 
                   disabled={loading || isConfigMissing}
                 >
                   {loading ? <Loader2 className="w-5 h-5 animate-spin mr-3" /> : null}
-                  {isSignUp ? "Register Organization" : "Enter Workspace"}
+                  {isSignUp ? "Register" : "Enter Workspace"}
                   {!loading && <ArrowRight className="w-4 h-4 ml-2" />}
                 </Button>
               </form>
@@ -368,7 +351,7 @@ export default function LoginPage() {
 
             <footer className="pt-6 border-t flex flex-col items-center gap-4">
               <p className="text-sm text-muted-foreground font-medium">
-                {isSignUp ? "Already registered?" : "New to DISA Framework?"}{" "}
+                {isSignUp ? "Already registered?" : "New to AuditAccess?"}{" "}
                 <button
                   onClick={() => {
                     setIsSignUp(!isSignUp);
@@ -379,10 +362,6 @@ export default function LoginPage() {
                 >
                   {isSignUp ? "Sign In" : "Create Account"}
                 </button>
-              </p>
-
-              <p className="text-[9px] text-muted-foreground uppercase font-black tracking-[0.3em] flex items-center gap-2">
-                <Globe className="w-3 h-3" /> Inclusive AI Intelligence Pipeline
               </p>
             </footer>
           </div>

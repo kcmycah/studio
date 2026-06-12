@@ -12,6 +12,18 @@ export const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+/**
+ * Validates the Firebase configuration.
+ * Returns true if all required keys are present.
+ */
+export function isFirebaseConfigValid(): boolean {
+  return !!(
+    firebaseConfig.apiKey &&
+    firebaseConfig.projectId &&
+    firebaseConfig.appId
+  );
+}
+
 // Diagnostics for development
 if (typeof window !== 'undefined') {
   const missingKeys = Object.entries(firebaseConfig)
@@ -19,9 +31,9 @@ if (typeof window !== 'undefined') {
     .map(([key]) => key);
 
   if (missingKeys.length > 0) {
-    console.warn(
-      `Firebase configuration is incomplete. Missing: ${missingKeys.join(', ')}. ` +
-      `Check your .env file and ensure all NEXT_PUBLIC_FIREBASE_* variables are set.`
+    console.error(
+      `CRITICAL: Firebase configuration is missing keys: ${missingKeys.join(', ')}. ` +
+      `The app will not function until these are added to your .env file.`
     );
   }
 }
