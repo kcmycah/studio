@@ -32,7 +32,7 @@ git push -u origin main
 2. Select your project: **disa-ec810**.
 3. Enable **Authentication** with the Email/Password provider.
 4. Create a **Cloud Firestore** database in production mode.
-5. The Security Rules are already provided in `firestore.rules`. Ensure you deploy them via the Firebase Console or CLI.
+5. Deploy Security Rules: The rules in `firestore.rules` are optimized for the subcollection model.
 
 ### 3. Deploy to Vercel
 1. Install the Vercel CLI: `npm install -g vercel`.
