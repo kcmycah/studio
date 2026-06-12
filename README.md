@@ -15,7 +15,7 @@ git init
 git add .
 
 # Create your first commit
-git commit -m "Initialize DISA Audit Pipeline with subcollection architecture"
+git commit -m "Production Launch: DISA Pipeline Ready"
 
 # Link to your GitHub repository
 git remote add origin https://github.com/kcmycah/disa-app.git
@@ -32,19 +32,14 @@ git push -u origin main
 2. Select your project: **disa-ec810**.
 3. Enable **Authentication** with the Email/Password provider.
 4. Create a **Cloud Firestore** database in production mode.
-5. Deploy Security Rules: The rules in `firestore.rules` are optimized for the subcollection model.
+5. Deploy Security Rules: Ensure `firestore.rules` is updated to allow subcollection access.
 
 ### 3. Deploy to Vercel
 1. Install the Vercel CLI: `npm install -g vercel`.
 2. Run `vercel` to link your project and deploy a preview.
 3. Add your environment variables in the Vercel Project Settings (copy them from your `.env`).
-    - *Note: Remember to add GEMINI_API_KEY and RESEND_API_KEY.*
+    - *Required: GEMINI_API_KEY, RESEND_API_KEY, and Firebase keys.*
 4. Run `vercel --prod` for the final production deployment.
-
-## Architecture Notes
-- **Subcollection Model**: High-performance nested path structure: `ai_systems/{id}/assessments`.
-- **Path-Scoped Security**: Firestore rules verify ownership at the parent system level for nested audit reports.
-- **Genkit Integration**: Specialized GenAI flows for executive summaries and persona impact analysis.
 
 ---
 Built for the inclusive future of AI.
