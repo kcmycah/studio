@@ -4,43 +4,39 @@ AuditAccess is a professional platform for auditing AI systems for accessibility
 
 ## 🚀 Deployment Guide
 
-Follow these steps to launch your production audit pipeline.
+Follow these steps to push your code to GitHub and deploy to production.
 
 ### 1. Initialize and Push to GitHub
-Run these commands in your project root to upload the source code to your repository:
+Run these commands in your local project root:
 
 ```bash
-# Initialize git
+# Initialize git (if not already done)
 git init
 
-# Add all files
+# Add all project files
 git add .
 
-# Create your first commit
-git commit -m "Production Launch: DISA Pipeline Ready"
+# Create the initial commit
+git commit -m "Launch: DISA Audit Pipeline v1.0"
 
-# Link to your GitHub repository
+# Link your local repo to GitHub
 git remote add origin https://github.com/kcmycah/disa-app.git
 
-# Set the main branch
+# Rename branch to main
 git branch -M main
 
-# Push your code
+# Push the code
 git push -u origin main
 ```
 
-### 2. Configure Firebase
-1. Go to the [Firebase Console](https://console.firebase.com/).
-2. Select your project: **disa-ec810**.
-3. Enable **Authentication** with the Email/Password provider.
-4. Create a **Cloud Firestore** database in production mode.
-5. In **Firestore Rules**, ensure the rules from `firestore.rules` in this project are applied.
-
-### 3. Deploy to Vercel
+### 2. Deploy to Vercel
 1. Install the Vercel CLI: `npm install -g vercel`.
 2. Run `vercel` to link your project and deploy a preview.
-3. Add your environment variables in the Vercel Project Settings (copy them from your `.env`).
+3. Add your environment variables (Firebase Keys, Gemini Key, Resend Key) in the [Vercel Dashboard Settings](https://vercel.com/dashboard).
 4. Run `vercel --prod` for the final production deployment.
+
+### 3. Database & Security
+Ensure your Firestore rules from `firestore.rules` are deployed via the Firebase Console.
 
 ---
 Built for the inclusive future of AI.
