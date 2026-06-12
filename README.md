@@ -1,7 +1,6 @@
-
 # AuditAccess - Inclusive AI Audit Pipeline
 
-AuditAccess is a production-grade platform for auditing AI systems for accessibility and fairness using the **DISA (Disability-Inclusive System Assessment)** framework.
+AuditAccess is a professional platform for auditing AI systems for accessibility and fairness using the **DISA (Disability-Inclusive System Assessment)** framework.
 
 ## 🚀 Deployment Instructions
 
@@ -24,7 +23,7 @@ Configure the following in your Vercel Project Settings:
 This application uses a high-performance **subcollection architecture**. Rules are path-scoped to `ai_systems/{id}/assessments` to ensure data privacy and listing efficiency. These rules are automatically managed by the Firebase Studio configuration.
 
 ### 3. Deployment Commands
-Follow these steps to push your application live:
+Run these commands in your terminal to push your application live:
 
 ```bash
 # 1. Initialize git
