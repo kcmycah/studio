@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -33,7 +34,6 @@ export function useCollection<T = DocumentData>(
   // Memoize constraints to prevent unnecessary effect re-runs
   const constraintsHash = useMemo(() => {
     try {
-      // Create a stable string representation of the constraints
       return JSON.stringify(constraints.map(c => c.toString()));
     } catch {
       return 'static-constraints';
@@ -47,27 +47,23 @@ export function useCollection<T = DocumentData>(
       let allConstraints = [...constraints];
       
       /**
-       * Automatic scoping for top-level user-owned collections.
+       * Automatic scoping for protected collections.
        * 
        * Firestore Security Rules require broad 'list' queries to have filters that 
-       * match the rules' conditions. For collections like 'ai_systems' or 'testRuns', 
-       * we must explicitly filter by userId.
-       * 
-       * Subcollections (e.g., 'ai_systems/{id}/assessments') are naturally scoped by 
-       * their parent path and handled by parent ownership rules.
+       * match the rules' conditions.
        */
-      const protectedTopLevel = ['ai_systems', 'testRuns', 'feedback', 'user_preferences', 'assessments', 'disa_assessments'];
+      const protectedPaths = ['ai_systems', 'testRuns', 'feedback', 'user_preferences', 'assessments'];
       
-      // If the path is top-level (no slashes) and in our protected list, inject the userId filter
-      if (!path.includes('/') && protectedTopLevel.includes(path)) {
-        // Only add if not already present
+      const isTopLevelProtected = !path.includes('/') && protectedPaths.includes(path);
+      const isAssessmentsSub = path.endsWith('/assessments');
+
+      if (isTopLevelProtected || isAssessmentsSub) {
         const hasUserIdFilter = constraints.some(c => c.toString().includes('userId'));
         if (!hasUserIdFilter) {
           allConstraints.push(where('userId', '==', user.uid));
         }
       }
 
-      // Add a safety limit if none exists to optimize performance
       if (!constraints.some(c => c.toString().includes('limit'))) {
         allConstraints.push(firestoreLimit(100));
       }
@@ -101,13 +97,11 @@ export function useCollection<T = DocumentData>(
         setLoading(false);
       },
       async (err) => {
-        // Surface rich contextual errors for security rule violations
         const permissionError = new FirestorePermissionError({
           path: path || 'unknown',
           operation: 'list',
         } satisfies SecurityRuleContext);
         
-        // Emit the error centrally
         errorEmitter.emit('permission-error', permissionError);
         setError(err);
         setLoading(false);

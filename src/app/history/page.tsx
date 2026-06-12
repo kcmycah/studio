@@ -68,6 +68,7 @@ function HistoryContent() {
           
           const assessmentQuery = query(
             collection(db, "ai_systems", system.id, "assessments"),
+            where("userId", "==", user.uid),
             orderBy("createdAt", "desc"),
             limit(50)
           );
@@ -110,7 +111,7 @@ function HistoryContent() {
   );
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background text-foreground">
       <AppSidebar />
       <main className="flex-1 md:ml-[260px] p-8 pt-24 md:pt-8 max-w-7xl mx-auto w-full">
         <header className="mb-10 flex justify-between items-center">

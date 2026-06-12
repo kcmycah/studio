@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, Suspense } from "react";
@@ -70,7 +71,7 @@ function NewAssessmentContent() {
         equityDataScore: domainScores.equityData
       });
 
-      // Nested path: ai_systems/{systemId}/assessments/{assessmentId}
+      // Path: ai_systems/{systemId}/assessments/{assessmentId}
       const assessmentRef = doc(collection(db, "ai_systems", selectedSystem.id, "assessments"));
       const assessmentData = {
         systemId: selectedSystem.id,
@@ -112,7 +113,7 @@ function NewAssessmentContent() {
     <div className="flex min-h-screen bg-background">
       <AppSidebar />
       <main className="flex-1 md:ml-[260px] p-8 pt-24 md:pt-8 max-w-5xl mx-auto w-full">
-        <header className="mb-10"><h1 className="text-3xl font-bold">New Assessment</h1></header>
+        <header className="mb-10 text-foreground"><h1 className="text-3xl font-bold">New Assessment</h1></header>
         <Card>
           <CardHeader><CardTitle>Initiate Fairness Audit</CardTitle></CardHeader>
           <CardContent className="space-y-8">
@@ -133,9 +134,9 @@ function NewAssessmentContent() {
               <Label>Target Personas</Label>
               <div className="grid grid-cols-3 gap-4">
                 {PERSONAS.map(p => (
-                  <div key={p} className="flex items-center space-x-2 border p-3 rounded-lg">
+                  <div key={p} className="flex items-center space-x-2 border p-3 rounded-lg bg-card">
                     <Checkbox id={p} checked={selectedPersonas.includes(p)} onCheckedChange={() => togglePersona(p)} />
-                    <label htmlFor={p} className="text-sm font-medium">{p}</label>
+                    <label htmlFor={p} className="text-sm font-medium text-foreground">{p}</label>
                   </div>
                 ))}
               </div>
