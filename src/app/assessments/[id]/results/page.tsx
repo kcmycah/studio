@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useFirestore, useUser } from "@/firebase";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, limit } from "firebase/firestore";
 import { AISystem, Assessment, TestRun } from "@/lib/types";
 import { useParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
@@ -78,17 +78,20 @@ export default function AssessmentResultsPage() {
             }));
           });
 
+        // Security rules require explicit limit for list queries
         const q = query(
           collection(db, "testRuns"), 
           where("assessmentId", "==", id as string),
-          where("userId", "==", user.uid)
+          where("userId", "==", user.uid),
+          limit(100)
         );
         getDocs(q)
           .then(runsSnap => {
             const runs = runsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as TestRun));
             setRawTestRuns(runs.sort((a, b) => a.persona.localeCompare(b.persona)));
           })
-          .catch(async () => {
+          .catch(async (err) => {
+            console.error("Test runs fetch error:", err);
             errorEmitter.emit('permission-error', new FirestorePermissionError({
               path: 'testRuns',
               operation: 'list'
@@ -275,7 +278,7 @@ export default function AssessmentResultsPage() {
               </Button>
               <h1 className="text-4xl font-black tracking-tighter">Executive Briefing</h1>
               <p className="text-muted-foreground mt-1 flex items-center gap-2">
-                <Briefcase className="w-4 h-4" /> Professional Memo • Confidential • {assessment?.createdAt?.toDate?.()?.toLocaleDateString()}
+                <Briefcase className="w-4 h-4" /> Professional Memo • Confidential • {assessment?.createdAt?.toDate?.()?.toLocaleDateString() || new Date().toLocaleDateString()}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">

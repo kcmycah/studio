@@ -5,7 +5,7 @@ import { useEffect, useState, Suspense } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useFirestore, useUser } from "@/firebase";
-import { collection, query, where, getDocs, doc, deleteDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, deleteDoc, limit, orderBy } from "firebase/firestore";
 import { AISystem, Assessment } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,9 +54,12 @@ function HistoryContent() {
     if (!user || !db) return;
     setLoading(true);
     
+    // Security rules require explicit limit for collection queries
     const assessmentsQuery = query(
       collection(db, "assessments"), 
-      where("userId", "==", user.uid)
+      where("userId", "==", user.uid),
+      orderBy("createdAt", "desc"),
+      limit(100)
     );
 
     const systemsQuery = query(
@@ -79,19 +82,15 @@ function HistoryContent() {
             systemName: systemsMap.get(data.systemId) || "Unknown System"
           };
         })
-        .filter(item => !!item.createdAt)
-        .sort((a, b) => {
-          const timeA = a.createdAt?.toMillis?.() || 0;
-          const timeB = b.createdAt?.toMillis?.() || 0;
-          return timeB - timeA;
-        });
-
+        .filter(item => !!item.createdAt);
+      
       const filteredResults = systemIdFilter 
         ? results.filter(a => a.systemId === systemIdFilter)
         : results;
       
       setAssessments(filteredResults);
     }).catch(async (error) => {
+      console.error("History fetch error:", error);
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: 'assessments',
         operation: 'list'
