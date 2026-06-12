@@ -1,4 +1,3 @@
-
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -10,7 +9,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const metadata: Metadata = {
-  title: 'DISA Audit - Inclusive AI Audit Pipeline',
+  title: 'AuditAccess - Inclusive AI Audit Pipeline',
   description: 'Auditing AI systems for accessibility and fairness using the DISA framework.',
 };
 

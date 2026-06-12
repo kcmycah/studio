@@ -1,6 +1,6 @@
 /**
  * Firebase configuration object.
- * Values are pulled from environment variables.
+ * Values are pulled from environment variables for production readiness.
  */
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -20,7 +20,6 @@ export function isFirebaseConfigValid(): boolean {
   
   if (!apiKey || !projectId || !appId) return false;
   
-  // Basic check for common placeholder strings
   const isPlaceholder = (val: string | undefined) => 
     !val || 
     val.includes('YOUR_') || 
@@ -34,7 +33,6 @@ export function isFirebaseConfigValid(): boolean {
   return true;
 }
 
-// Diagnostics for development
 if (typeof window !== 'undefined') {
   const missingKeys = Object.entries(firebaseConfig)
     .filter(([_, value]) => !value)
