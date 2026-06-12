@@ -14,7 +14,7 @@ import {
 import { useFirestore } from '../provider';
 import { useUser } from '../auth/use-user';
 import { errorEmitter } from '../error-emitter';
-import { FirestorePermissionError } from '../errors';
+import { FirestorePermissionError, type SecurityRuleContext } from '../errors';
 
 /**
  * Intelligent hook for fetching Firestore collections with automatic security scoping.
@@ -37,6 +37,7 @@ export function useCollection<T = DocumentData>(
   // if constraints are passed as a literal array in the component body.
   const constraintsHash = useMemo(() => {
     try {
+      // Stringify constraints for a stable dependency check
       return JSON.stringify(constraints.map(c => c.toString()));
     } catch {
       return 'static-constraints';
@@ -49,17 +50,21 @@ export function useCollection<T = DocumentData>(
     try {
       let allConstraints = [...constraints];
       
-      // AUTOMATIC SECURITY SCOPING
+      // 🔧 FIX: AUTOMATIC SECURITY SCOPING
       // Ensure protected collections are always filtered by the authenticated userId.
       // This directly prevents the "Permission Denied" errors during list operations.
-      const protectedCollections = ['assessments', 'testRuns', 'ai_systems', 'disa_assessments', 'feedback'];
-      if (protectedCollections.includes(path)) {
+      const protectedCollections = ['assessments', 'disa_assessments', 'ai_systems', 'testRuns', 'feedback'];
+      
+      // Only add the filter if it's not already present to avoid potential Firestore errors
+      const hasUserIdFilter = constraints.some(c => c.toString().includes('userId'));
+      
+      if (protectedCollections.includes(path) && !hasUserIdFilter) {
         allConstraints.push(where('userId', '==', user.uid));
       }
 
       // PERFORMANCE REQUIREMENT
       // Automatically add a safety limit if one isn't provided.
-      if (!constraints.some(c => (c as any).type === 'limit')) {
+      if (!constraints.some(c => c.toString().includes('limit'))) {
         allConstraints.push(firestoreLimit(100));
       }
 
@@ -71,10 +76,14 @@ export function useCollection<T = DocumentData>(
   }, [db, path, user, constraintsHash]);
 
   useEffect(() => {
-    if (!memoizedQuery) {
-      if (!path || !user) setLoading(false);
+    // If we're not logged in or have no path, reset state
+    if (!path || !user) {
+      setData([]);
+      setLoading(false);
       return;
     }
+
+    if (!memoizedQuery) return;
 
     setLoading(true);
     const unsubscribe = onSnapshot(
@@ -85,6 +94,7 @@ export function useCollection<T = DocumentData>(
           id: doc.id,
         } as T & { id: string }));
         setData(docs);
+        setError(null);
         setLoading(false);
       },
       async (err) => {
@@ -92,7 +102,8 @@ export function useCollection<T = DocumentData>(
         const permissionError = new FirestorePermissionError({
           path: path || 'unknown',
           operation: 'list',
-        });
+        } satisfies SecurityRuleContext);
+        
         errorEmitter.emit('permission-error', permissionError);
         setError(err);
         setLoading(false);
