@@ -29,11 +29,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid LEMON_SQUEEZY_STORE_ID. Must be a numeric value." }, { status: 500 });
     }
 
+    // Initialize Lemon Squeezy client
     lemonSqueezySetup({
       apiKey: apiKey,
       onError: (error) => console.error("Lemon Squeezy Initialization Error:", error),
     });
 
+    // Create the checkout session
     const checkout = await createCheckout(
       storeId.toString(),
       variantId,
