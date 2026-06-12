@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import { initializeFirebase } from "@/firebase";
 import { collection, query, where, getDocs, doc, setDoc, serverTimestamp } from "firebase/firestore";
@@ -17,6 +16,9 @@ export async function GET(req: NextRequest) {
   }
 
   const { firestore } = initializeFirebase();
+  if (!firestore) {
+    return NextResponse.json({ error: "Firestore not initialized" }, { status: 500 });
+  }
   
   try {
     // 1. Find all Pro/Enterprise users with monitoring enabled
@@ -43,7 +45,6 @@ export async function GET(req: NextRequest) {
         const system = { id: systemDoc.id, ...systemDoc.data() } as AISystem;
 
         // 3. Simulate the audit (Calling our own internal logic/API)
-        // In a real scenario, this would trigger the Playwright/Axe scanner.
         const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/run-tests`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -55,8 +56,10 @@ export async function GET(req: NextRequest) {
 
         if (!response.ok) continue;
 
-        const { results }: { results: TestRunResult[] } = await response.json();
-        const score = computeDISAScore(results);
+        const { results, domainScores, biasExplanation }: { results: TestRunResult[], domainScores: any, biasExplanation: string } = await response.json();
+        
+        // Use the domain score if available, or compute fallback
+        const score = domainScores?.accessibility || computeDISAScore(results);
 
         // 4. Save the automated assessment
         const assessmentRef = doc(collection(firestore, "assessments"));
@@ -65,15 +68,20 @@ export async function GET(req: NextRequest) {
           userId: userDoc.id,
           version: `Auto-${new Date().toISOString().split('T')[0]}`,
           createdAt: serverTimestamp(),
-          overallScore: score
+          overallScore: score,
+          domainScores: domainScores || null,
+          details: {
+            biasExplanation: biasExplanation || ""
+          }
         });
 
-        // 5. Save test runs
+        // 5. Save test runs with userId for security rule compliance
         for (const res of results) {
           const runRef = doc(collection(firestore, "testRuns"));
           await setDoc(runRef, {
             ...res,
             assessmentId: assessmentRef.id,
+            userId: userDoc.id, // CRITICAL: Added for security rules
             createdAt: serverTimestamp()
           });
         }
