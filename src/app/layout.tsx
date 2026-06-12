@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -5,6 +6,8 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { FirebaseErrorListener } from '@/components/firebase-error-listener';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const metadata: Metadata = {
   title: 'DISA Audit - Inclusive AI Audit Pipeline',
@@ -24,6 +27,8 @@ export default function RootLayout({
           <Toaster />
           <FirebaseErrorListener />
         </FirebaseClientProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
