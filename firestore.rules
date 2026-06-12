@@ -2,12 +2,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper: check if the user owns a document
+    // Helper: check if the user owns a document directly
     function isOwner(userId) {
       return request.auth != null && request.auth.uid == userId;
     }
 
-    // Helper: check if parent system is owned by user
+    // Helper: check if parent system is owned by the user
     function isSystemOwner(systemId) {
       let systemPath = /databases/$(database)/documents/ai_systems/$(systemId);
       return request.auth != null && get(systemPath).data.userId == request.auth.uid;
@@ -25,7 +25,7 @@ service cloud.firestore {
           isOwner(request.resource.data.userId) && 
           request.resource.data.systemId == systemId;
         
-        // List rule supports the aggregation pattern used in the dashboard/history
+        // Allow listing within the specific system context
         allow list: if request.auth != null && isSystemOwner(systemId);
       }
     }
@@ -47,9 +47,7 @@ service cloud.firestore {
     // feedback
     match /feedback/{feedbackId} {
       allow create: if request.auth != null;
-      allow read: if isOwner(resource.data.userId);
-      allow list: if request.auth != null && 
-        request.query.filters.some(f => f.field == 'userId' && f.op == '==' && f.value == request.auth.uid);
+      allow read, list: if request.auth != null && (isOwner(resource.data.userId) || isOwner(request.auth.uid));
     }
   }
 }

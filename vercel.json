@@ -6,5 +6,7 @@
   "cleanUrls": true,
   "github": {
     "silent": true
-  }
+  },
+  "installCommand": "npm install",
+  "buildCommand": "npm run build"
 }

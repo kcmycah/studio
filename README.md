@@ -1,3 +1,4 @@
+
 # AuditAccess - Inclusive AI Audit Pipeline
 
 AuditAccess is a production-grade platform for auditing AI systems for accessibility and fairness using the **DISA (Disability-Inclusive System Assessment)** framework.
@@ -22,30 +23,22 @@ Configure the following in your Vercel Project Settings:
 ### 2. Firestore Security Rules
 This application uses a high-performance **subcollection architecture**. Rules are path-scoped to `ai_systems/{id}/assessments` to ensure data privacy and listing efficiency. These rules are automatically managed by the Firebase Studio configuration.
 
-### 3. Repository Initialization & Push
+### 3. Deployment Commands
+Follow these steps to push your application live:
+
 ```bash
-# Initialize git
+# 1. Initialize git
 git init
-
-# Add all files
 git add .
+git commit -m "Initial commit: Production DISA Pipeline"
 
-# Commit
-git commit -m "Initial commit: Production-ready DISA Pipeline"
-
-# Create and push to GitHub
+# 2. Push to GitHub
 gh repo create disa-app --public --source=. --remote=origin --push
-```
 
-### 4. Vercel Deployment
-```bash
-# Login to Vercel
+# 3. Deploy to Vercel
+npm install -g vercel
 vercel login
-
-# Link your project
-vercel link
-
-# Deploy to production
+vercel link --yes
 vercel --prod
 ```
 
