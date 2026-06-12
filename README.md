@@ -1,4 +1,3 @@
-
 # AuditAccess - Inclusive AI Audit Pipeline
 
 AuditAccess is a professional platform for auditing AI systems for accessibility and fairness using the **DISA (Disability-Inclusive System Assessment)** framework.
@@ -7,7 +6,7 @@ AuditAccess is a professional platform for auditing AI systems for accessibility
 
 Follow these steps to launch your production audit pipeline.
 
-### 1. Push to GitHub
+### 1. Initialize and Push to GitHub
 Run these commands in your project root to upload the source code to your repository:
 
 ```bash

@@ -32,16 +32,3 @@ export function isFirebaseConfigValid(): boolean {
 
   return true;
 }
-
-if (typeof window !== 'undefined') {
-  const missingKeys = Object.entries(firebaseConfig)
-    .filter(([_, value]) => !value)
-    .map(([key]) => key);
-
-  if (missingKeys.length > 0 && process.env.NODE_ENV === 'development') {
-    console.warn(
-      `Firebase configuration is missing keys: ${missingKeys.join(', ')}. ` +
-      `Ensure these are added to your .env file.`
-    );
-  }
-}
