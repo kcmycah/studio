@@ -54,6 +54,7 @@ function HistoryContent() {
     const fetchData = async () => {
       setLoading(true);
       try {
+        // 1. Fetch systems owned by the user
         const systemsQuery = query(
           collection(db, "ai_systems"), 
           where("userId", "==", user.uid)
@@ -63,15 +64,16 @@ function HistoryContent() {
         
         const allAssessments: (Assessment & { systemName: string })[] = [];
         
+        // 2. Fetch assessments from each system's subcollection
         for (const system of systems) {
           if (systemIdFilter && system.id !== systemIdFilter) continue;
           
           const assessmentQuery = query(
             collection(db, "ai_systems", system.id, "assessments"),
-            where("userId", "==", user.uid),
             orderBy("createdAt", "desc"),
-            limit(50)
+            limit(20)
           );
+          
           const assessmentSnap = await getDocs(assessmentQuery);
           assessmentSnap.forEach(doc => {
             allAssessments.push({
@@ -82,7 +84,12 @@ function HistoryContent() {
           });
         }
         
-        setAssessments(allAssessments.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
+        // 3. Sort combined results by creation date
+        setAssessments(allAssessments.sort((a, b) => {
+          const dateA = a.createdAt?.toMillis?.() || 0;
+          const dateB = b.createdAt?.toMillis?.() || 0;
+          return dateB - dateA;
+        }));
       } catch (error) {
         console.error("History fetch error:", error);
       } finally {

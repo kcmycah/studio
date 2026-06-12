@@ -34,7 +34,7 @@ export function useCollection<T = DocumentData>(
   // Memoize constraints to prevent unnecessary effect re-runs
   const constraintsHash = useMemo(() => {
     try {
-      return JSON.stringify(constraints.map(c => c.toString()));
+      return constraints.length > 0 ? JSON.stringify(constraints.map(c => typeof c.toString === 'function' ? c.toString() : 'dynamic')) : 'empty';
     } catch {
       return 'static-constraints';
     }
@@ -48,16 +48,13 @@ export function useCollection<T = DocumentData>(
       
       /**
        * Automatic scoping for protected collections.
-       * 
-       * Firestore Security Rules require broad 'list' queries to have filters that 
-       * match the rules' conditions.
        */
-      const protectedPaths = ['ai_systems', 'testRuns', 'feedback', 'user_preferences', 'assessments'];
-      
+      const protectedPaths = ['ai_systems', 'testRuns', 'feedback', 'users'];
       const isTopLevelProtected = !path.includes('/') && protectedPaths.includes(path);
-      const isAssessmentsSub = path.endsWith('/assessments');
-
-      if (isTopLevelProtected || isAssessmentsSub) {
+      
+      // We only inject userId filter for top-level collections where it's required.
+      // Subcollections like ai_systems/{id}/assessments are path-scoped.
+      if (isTopLevelProtected) {
         const hasUserIdFilter = constraints.some(c => c.toString().includes('userId'));
         if (!hasUserIdFilter) {
           allConstraints.push(where('userId', '==', user.uid));

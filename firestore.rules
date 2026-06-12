@@ -25,25 +25,17 @@ service cloud.firestore {
           isOwner(request.resource.data.userId) && 
           request.resource.data.systemId == systemId;
         
-        // Explicit list rule to support userId filtering if needed, 
-        // though path scoping is the primary security mechanism here.
-        allow list: if request.auth != null && 
-          (isSystemOwner(systemId) || 
-           request.query.filters.some(f => f.field == 'userId' && f.op == '==' && f.value == request.auth.uid));
+        // List rule supports the aggregation pattern used in the dashboard/history
+        allow list: if request.auth != null && isSystemOwner(systemId);
       }
     }
 
-    // testRuns – direct ownership field
+    // testRuns – direct ownership field for efficient cross-system lookups
     match /testRuns/{document} {
       allow read, write, delete: if isOwner(resource.data.userId);
       allow create: if request.auth != null && isOwner(request.resource.data.userId);
       allow list: if request.auth != null && 
         request.query.filters.some(f => f.field == 'userId' && f.op == '==' && f.value == request.auth.uid);
-    }
-
-    // user_preferences
-    match /user_preferences/{userId} {
-      allow read, write: if isOwner(userId);
     }
 
     // users

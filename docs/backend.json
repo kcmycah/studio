@@ -107,10 +107,6 @@
       "schema": "TestRun",
       "description": "Individual persona test results for an assessment."
     },
-    "/user_preferences/{userId}": {
-      "schema": "UserPreference",
-      "description": "Persistent UI settings for a user."
-    },
     "/feedback/{feedbackId}": {
       "schema": "Feedback",
       "description": "User reported accessibility issues."
