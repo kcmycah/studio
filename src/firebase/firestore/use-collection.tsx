@@ -34,10 +34,8 @@ export function useCollection<T = DocumentData>(
   const [error, setError] = useState<Error | null>(null);
 
   // We use a stable hash of the constraints to avoid infinite re-render loops
-  // if constraints are passed as a literal array in the component body.
   const constraintsHash = useMemo(() => {
     try {
-      // Stringify constraints for a stable dependency check
       return JSON.stringify(constraints.map(c => c.toString()));
     } catch {
       return 'static-constraints';
@@ -51,18 +49,22 @@ export function useCollection<T = DocumentData>(
       let allConstraints = [...constraints];
       
       // 🔧 FIX: AUTOMATIC SECURITY SCOPING
-      // Ensure protected collections are always filtered by the authenticated userId.
-      // This directly prevents the "Permission Denied" errors during list operations.
-      const protectedCollections = ['assessments', 'disa_assessments', 'ai_systems', 'testRuns', 'feedback'];
+      // These collections have security rules that require a userId filter for listing.
+      const protectedCollections = [
+        'assessments', 
+        'disa_assessments', 
+        'ai_systems', 
+        'testRuns', 
+        'feedback'
+      ];
       
-      // Only add the filter if it's not already present to avoid potential Firestore errors
-      const hasUserIdFilter = constraints.some(c => c.toString().includes('userId'));
-      
-      if (protectedCollections.includes(path) && !hasUserIdFilter) {
+      if (protectedCollections.includes(path)) {
+        // Always append the userId filter to satisfy security rules for list operations.
+        // Firestore rules cannot verify ownership during a 'list' operation unless
+        // the query itself is restricted to that user's ID.
         allConstraints.push(where('userId', '==', user.uid));
       }
 
-      // PERFORMANCE REQUIREMENT
       // Automatically add a safety limit if one isn't provided.
       if (!constraints.some(c => c.toString().includes('limit'))) {
         allConstraints.push(firestoreLimit(100));
