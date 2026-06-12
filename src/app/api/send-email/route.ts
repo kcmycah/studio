@@ -1,10 +1,9 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
 /**
- * Sends a professional executive audit briefing via email.
- * Accepts pre-computed data from the client to bypass server-side Firestore permission issues
- * when using the Client SDK in a server environment.
+ * Sends a professional executive audit briefing via email with an optional PDF attachment.
  */
 export const maxDuration = 60;
 
@@ -15,7 +14,7 @@ export async function POST(req: NextRequest) {
     
     if (!apiKey) {
       return NextResponse.json({ 
-        error: 'Email service configuration missing. Please add RESEND_API_KEY to your environment variables.' 
+        error: 'Email service configuration missing.' 
       }, { status: 500 });
     }
 
@@ -28,11 +27,12 @@ export async function POST(req: NextRequest) {
       summaryText, 
       recommendation,
       performanceLevel,
-      testRuns 
+      testRuns,
+      pdfAttachment // Base64 string of the PDF
     } = await req.json();
 
     if (!recipientEmail || !systemName) {
-      return NextResponse.json({ error: 'Missing required report data (recipient or system name).' }, { status: 400 });
+      return NextResponse.json({ error: 'Missing required report data.' }, { status: 400 });
     }
 
     const htmlContent = `
@@ -83,23 +83,32 @@ export async function POST(req: NextRequest) {
       </div>
     `;
 
-    const { data, error } = await resend.emails.send({
+    const emailOptions: any = {
       from: fromAddress,
       to: [recipientEmail],
       subject: `Briefing: ${systemName} (${overallScore}/100)`,
       html: htmlContent
-    });
+    };
+
+    if (pdfAttachment) {
+      emailOptions.attachments = [
+        {
+          filename: `DISA-Audit-${systemName.replace(/\s+/g, '-')}.pdf`,
+          content: Buffer.from(pdfAttachment, 'base64')
+        }
+      ];
+    }
+
+    const { data, error } = await resend.emails.send(emailOptions);
 
     if (error) {
       console.error('Resend Delivery Error:', error);
-      return NextResponse.json({ 
-        error: error.message || 'Resend failed to deliver the email. Ensure the recipient is verified if using a trial account.' 
-      }, { status: 400 });
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     return NextResponse.json({ success: true, id: data?.id });
   } catch (err: any) {
     console.error('Email Dispatch Fatal Error:', err);
-    return NextResponse.json({ error: err.message || 'Internal server error during email dispatch.' }, { status: 500 });
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

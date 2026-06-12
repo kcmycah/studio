@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -15,14 +16,12 @@ import {
   CheckCircle2, 
   Loader2,
   ArrowLeft,
-  Download,
   Mail,
   FileSpreadsheet,
   ShieldAlert,
   Briefcase,
   ExternalLink,
-  Volume2,
-  Printer
+  Volume2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -165,6 +164,37 @@ export default function AssessmentResultsPage() {
     
     setSendingEmail(true);
     try {
+      // PDF Generation logic
+      const jsPDF = (await import('jspdf')).default;
+      const html2canvas = (await import('html2canvas')).default;
+      
+      const element = document.querySelector('.print-report') as HTMLElement;
+      if (!element) throw new Error("Report component not found for PDF generation.");
+
+      // Hide elements not needed in the PDF
+      const hiddenEls = element.querySelectorAll('.print\\:hidden');
+      hiddenEls.forEach(el => (el as HTMLElement).style.visibility = 'hidden');
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        windowWidth: 1200
+      });
+
+      // Restore elements
+      hiddenEls.forEach(el => (el as HTMLElement).style.visibility = '');
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.8);
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      });
+      
+      pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
+      const pdfBase64 = pdf.output('datauristring').split(',')[1];
+
       const res = await fetch("/api/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -176,15 +206,15 @@ export default function AssessmentResultsPage() {
           summaryText: summary.summaryText,
           recommendation: summary.recommendation,
           performanceLevel: summary.performanceLevel,
-          testRuns: rawTestRuns.map(r => ({ persona: r.persona, success: r.success }))
+          testRuns: rawTestRuns.map(r => ({ persona: r.persona, success: r.success })),
+          pdfAttachment: pdfBase64
         })
       });
       
       const data = await res.json();
-      
       if (!res.ok) throw new Error(data.error || "Email service failed.");
       
-      toast({ title: "Briefing Delivered", description: `The executive report has been sent to ${user.email}.` });
+      toast({ title: "Briefing Delivered", description: `The executive report and PDF have been sent to ${user.email}.` });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Delivery Error", description: err.message });
     } finally {
@@ -231,10 +261,6 @@ export default function AssessmentResultsPage() {
     }
   };
 
-  const handlePrintPDF = () => {
-    window.print();
-  };
-
   if (loading) return <div className="flex items-center justify-center min-h-screen bg-background"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>;
 
   return (
@@ -257,13 +283,9 @@ export default function AssessmentResultsPage() {
                 {exportingCsv ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileSpreadsheet className="w-4 h-4 mr-2" />}
                 CSV Log
               </Button>
-              <Button variant="outline" onClick={handlePrintPDF} className="font-bold">
-                <Printer className="w-4 h-4 mr-2" />
-                Export PDF
-              </Button>
               <Button className="bg-accent text-white hover:bg-accent/90 font-bold" disabled={sendingEmail} onClick={handleSendEmail}>
                 {sendingEmail ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
-                Email Report
+                Email Briefing + PDF
               </Button>
             </div>
           </div>
