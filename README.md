@@ -55,9 +55,6 @@ In your Vercel Project Settings, add the following variables. These are **critic
 | `GEMINI_API_KEY` | Your Google AI (Gemini) API Key |
 | `RESEND_API_KEY` | Your Resend API Key for email reports |
 | `NEXT_PUBLIC_APP_URL` | Your production domain (e.g., https://disa-app.vercel.app) |
-| `LEMON_SQUEEZY_API_KEY` | (Optional) For billing integration |
-| `LEMON_SQUEEZY_STORE_ID` | (Optional) For billing integration |
-| `LEMON_SQUEEZY_WEBHOOK_SECRET` | (Optional) For billing integration |
 
 ### 5. Final Production Push
 Once environment variables are set, trigger the production build:

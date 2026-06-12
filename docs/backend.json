@@ -71,12 +71,11 @@
     },
     "User": {
       "title": "User Profile",
-      "description": "Extended user data for monetization and settings.",
+      "description": "Extended user data for settings.",
       "type": "object",
       "properties": {
         "email": { "type": "string" },
         "subscriptionStatus": { "type": "string", "enum": ["free", "pro", "enterprise"] },
-        "lemonSqueezyCustomerId": { "type": "string" },
         "settings": {
           "type": "object",
           "properties": {
@@ -93,7 +92,7 @@
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
-      "description": "User profiles and subscription data."
+      "description": "User profiles and data."
     },
     "/ai_systems/{systemId}": {
       "schema": "AISystem",
@@ -101,15 +100,15 @@
     },
     "/ai_systems/{systemId}/assessments/{assessmentId}": {
       "schema": "Assessment",
-      "description": "System-nested records of comprehensive DISA audits."
+      "description": "System-nested records of DISA audits."
     },
     "/testRuns/{runId}": {
       "schema": "TestRun",
-      "description": "Individual persona test results for an assessment."
+      "description": "Individual persona test results."
     },
     "/feedback/{feedbackId}": {
       "schema": "Feedback",
-      "description": "User reported accessibility issues."
+      "description": "User reported issues."
     }
   }
 }
