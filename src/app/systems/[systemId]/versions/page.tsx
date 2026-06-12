@@ -51,17 +51,12 @@ export default function VersionHistoryPage() {
     });
   }, [systemId, db]);
 
-  const assessmentsQuery = useMemo(() => {
-    if (!db || !systemId || !user) return null;
-    return query(
-      collection(db, "assessments"),
-      where("systemId", "==", systemId),
-      where("userId", "==", user.uid),
-      orderBy("createdAt", "desc")
-    );
-  }, [db, systemId, user]);
-
-  const { data: assessments, loading } = useCollection<Assessment>(assessmentsQuery);
+  // useCollection now automatically adds userId filter and limit constraints.
+  // We only need to provide version-specific ordering and systemId filtering.
+  const { data: assessments, loading } = useCollection<Assessment>("assessments", [
+    where("systemId", "==", systemId as string),
+    orderBy("createdAt", "desc")
+  ]);
 
   const toggleSelection = (id: string) => {
     setSelectedVersions(prev => 
@@ -141,7 +136,7 @@ export default function VersionHistoryPage() {
                         </TableCell>
                         <TableCell className="font-bold">v{item.version}</TableCell>
                         <TableCell className="text-muted-foreground">
-                          {item.createdAt.toDate().toLocaleDateString()}
+                          {item.createdAt?.toDate?.().toLocaleDateString() || "Pending..."}
                         </TableCell>
                         <TableCell>
                           <span className={cn("text-xl font-bold", 

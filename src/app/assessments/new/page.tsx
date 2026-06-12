@@ -40,15 +40,8 @@ function NewAssessmentContent() {
   const [selectedPersonas, setSelectedPersonas] = useState<PersonaType[]>([]);
   const [running, setRunning] = useState(false);
 
-  const systemsQuery = useMemo(() => {
-    if (!db || !user) return null;
-    return query(
-      collection(db, "ai_systems"),
-      where("userId", "==", user.uid)
-    );
-  }, [db, user]);
-
-  const { data: systems, loading: systemsLoading } = useCollection<AISystem>(systemsQuery);
+  // useCollection now handles security scoping for 'ai_systems' automatically
+  const { data: systems, loading: systemsLoading } = useCollection<AISystem>("ai_systems");
 
   const selectedSystem = useMemo(() => {
     return systems?.find(s => s.id === selectedSystemId);

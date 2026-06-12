@@ -67,15 +67,9 @@ export default function Dashboard() {
   const [usage, setUsage] = useState<UserUsage | null>(null);
   const [loadingUsage, setLoadingUsage] = useState(true);
 
-  const systemsQuery = useMemo(() => {
-    if (!db || !user) return null;
-    return query(
-      collection(db, "ai_systems"),
-      where("userId", "==", user.uid)
-    );
-  }, [db, user]);
-
-  const { data: systems, loading: systemsLoading } = useCollection<AISystem>(systemsQuery);
+  // useCollection now handles paths and automatic scoping internally
+  const { data: systems, loading: systemsLoading } = useCollection<AISystem>("ai_systems");
+  
   const [systemStats, setSystemStats] = useState<Record<string, { latest: Assessment, trend: number | null, count: number }>>({});
   const [loadingLatest, setLoadingLatest] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
