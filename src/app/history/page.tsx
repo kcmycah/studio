@@ -7,18 +7,16 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { useFirestore, useUser } from "@/firebase";
 import { collection, query, where, getDocs, doc, deleteDoc, limit, orderBy } from "firebase/firestore";
 import { AISystem, Assessment } from "@/lib/types";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { 
-  History as HistoryIcon, 
-  Eye, 
   Search,
-  Calendar,
   Layers,
   Loader2,
-  Trash2
+  Trash2,
+  Eye
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -54,7 +52,6 @@ function HistoryContent() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // 1. Fetch systems owned by the user
         const systemsQuery = query(
           collection(db, "ai_systems"), 
           where("userId", "==", user.uid)
@@ -64,7 +61,6 @@ function HistoryContent() {
         
         const allAssessments: (Assessment & { systemName: string })[] = [];
         
-        // 2. Fetch assessments from each system's subcollection
         for (const system of systems) {
           if (systemIdFilter && system.id !== systemIdFilter) continue;
           
@@ -75,16 +71,15 @@ function HistoryContent() {
           );
           
           const assessmentSnap = await getDocs(assessmentQuery);
-          assessmentSnap.forEach(doc => {
+          assessmentSnap.forEach(docSnap => {
             allAssessments.push({
-              id: doc.id,
-              ...doc.data() as Assessment,
+              id: docSnap.id,
+              ...docSnap.data() as Assessment,
               systemName: system.name
             });
           });
         }
         
-        // 3. Sort combined results by creation date
         setAssessments(allAssessments.sort((a, b) => {
           const dateA = a.createdAt?.toMillis?.() || 0;
           const dateB = b.createdAt?.toMillis?.() || 0;
