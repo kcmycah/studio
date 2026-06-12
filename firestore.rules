@@ -1,51 +1,38 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper to check ownership
-    function signedIn() {
-      return request.auth != null;
-    }
-
+    // Helper: check if the user owns a document
     function isOwner(userId) {
-      return signedIn() && request.auth.uid == userId;
+      return request.auth != null && request.auth.uid == userId;
     }
 
-    // Users collection
-    match /users/{userId} {
-      allow read: if signedIn();
-      allow write: if isOwner(userId);
+    // AI systems
+    match /ai_systems/{document} {
+      allow read, write: if isOwner(resource.data.userId);
     }
 
-    // AI Systems
-    match /ai_systems/{systemId} {
-      allow read: if signedIn() && resource.data.userId == request.auth.uid;
-      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if signedIn() && resource.data.userId == request.auth.uid;
+    // Assessments – the problematic collection
+    match /assessments/{document} {
+      allow read: if isOwner(resource.data.userId);
+      allow write: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
     }
 
-    // Assessments
-    match /assessments/{assessmentId} {
-      allow read: if signedIn() && resource.data.userId == request.auth.uid;
-      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if signedIn() && resource.data.userId == request.auth.uid;
+    // disa_assessments (if you use it)
+    match /disa_assessments/{document} {
+      allow read: if isOwner(resource.data.userId);
+      allow write: if isOwner(resource.data.userId);
     }
 
-    // Test Runs - Now using direct userId check for list compatibility
-    match /testRuns/{runId} {
-      allow read: if signedIn() && resource.data.userId == request.auth.uid;
-      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if signedIn() && resource.data.userId == request.auth.uid;
+    // testRuns
+    match /testRuns/{document} {
+      allow read: if resource.data.userId == request.auth.uid;
+      allow write: if request.auth != null;
     }
 
-    // User preferences
+    // user_preferences
     match /user_preferences/{userId} {
       allow read, write: if isOwner(userId);
-    }
-
-    // Feedback
-    match /feedback/{feedbackId} {
-      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
-      allow read: if false; // Only accessible via Firebase Console/Admin
     }
   }
 }
