@@ -2,47 +2,35 @@
 
 AuditAccess is a professional platform for auditing AI systems for accessibility and fairness using the **DISA (Disability-Inclusive System Assessment)** framework.
 
-## 🚀 Deployment Guide
+## 🚀 Deployment & Export Guide
 
-Follow these steps to push your code to GitHub and deploy to production.
-
-### 1. Initialize and Push to GitHub
-Run these commands in your local project root:
+### 1. Zip the Project for Export
+To create a clean archive of your project (excluding heavy dependencies and git history), run this command in your terminal:
 
 ```bash
-# Initialize git
-git init
-
-# Add all project files
-git add .
-
-# Create the initial commit
-git commit -m "Launch: DISA Audit Pipeline v1.0"
-
-# Link your local repo to GitHub
-git remote add origin https://github.com/kcmycah/disa-app.git
-
-# Rename branch to main
-git branch -M main
-
-# Push the code
-git push -u origin main
+zip -r disa-app.zip . -x "*.git*" "node_modules/*" ".next/*" "disa-app.zip"
 ```
 
-### 2. Export Source Code
-If you need to create a zip archive for backup:
+### 2. Push to GitHub
+If you haven't linked your repository yet:
+
 ```bash
-zip -r disa-app.zip . -x "*.git*" "node_modules/*" ".next/*"
+# Initialize and commit
+git init
+git add .
+git commit -m "Launch: DISA Audit Pipeline v1.0"
+
+# Link and push
+git remote add origin https://github.com/kcmycah/disa-app.git
+git branch -M main
+git push -u origin main
 ```
 
 ### 3. Deploy to Vercel
 1. Install the Vercel CLI: `npm install -g vercel`.
-2. Run `vercel` to link your project and deploy a preview.
-3. Add your environment variables (Firebase Keys, Gemini Key, Resend Key) in the [Vercel Dashboard Settings](https://vercel.com/dashboard).
-4. Run `vercel --prod` for the final production deployment.
-
-### 4. Database & Security
-Ensure your Firestore rules from `firestore.rules` are deployed via the Firebase Console.
+2. Run `vercel` to link your project.
+3. Add your environment variables (Firebase, Gemini, Resend) in the Vercel Dashboard.
+4. Run `vercel --prod` for final deployment.
 
 ---
 Built for the inclusive future of AI.
