@@ -1,4 +1,3 @@
-
 /**
  * Firebase configuration object.
  * Values are pulled from environment variables.
@@ -30,10 +29,10 @@ if (typeof window !== 'undefined') {
     .filter(([_, value]) => !value)
     .map(([key]) => key);
 
-  if (missingKeys.length > 0) {
-    console.error(
-      `CRITICAL: Firebase configuration is missing keys: ${missingKeys.join(', ')}. ` +
-      `The app will not function until these are added to your .env file.`
+  if (missingKeys.length > 0 && process.env.NODE_ENV === 'development') {
+    console.warn(
+      `Firebase configuration is missing keys: ${missingKeys.join(', ')}. ` +
+      `Ensure these are added to your .env file.`
     );
   }
 }
