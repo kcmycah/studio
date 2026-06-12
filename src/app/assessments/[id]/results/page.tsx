@@ -55,10 +55,12 @@ export default function AssessmentResultsPage() {
 
   useEffect(() => {
     if (!id || !db || !user) return;
-    const fetchData = async () => {
-      const assessmentRef = doc(db, "assessments", id as string);
-      
-      getDoc(assessmentRef).then(async (assessmentSnap) => {
+    
+    const assessmentRef = doc(db, "assessments", id as string);
+    
+    // Pattern 1: Firestore Mutations/Reads with Contextual Errors
+    getDoc(assessmentRef)
+      .then(async (assessmentSnap) => {
         if (!assessmentSnap.exists()) {
           setLoading(false);
           return;
@@ -66,39 +68,45 @@ export default function AssessmentResultsPage() {
         const assessmentData = { id: assessmentSnap.id, ...assessmentSnap.data() } as Assessment;
         setAssessment(assessmentData);
 
-        // Fetch system details
         const systemRef = doc(db, "ai_systems", assessmentData.systemId);
-        getDoc(systemRef).then(systemSnap => {
-          if (systemSnap.exists()) setSystem({ id: systemSnap.id, ...systemSnap.data() } as AISystem);
-        });
+        getDoc(systemRef)
+          .then(systemSnap => {
+            if (systemSnap.exists()) setSystem({ id: systemSnap.id, ...systemSnap.data() } as AISystem);
+          })
+          .catch(async () => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: systemRef.path,
+              operation: 'get'
+            }));
+          });
 
-        // Fetch test runs
         const q = query(
           collection(db, "testRuns"), 
           where("assessmentId", "==", id as string),
           where("userId", "==", user.uid)
         );
-        getDocs(q).then(runsSnap => {
-          const runs = runsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as TestRun));
-          setRawTestRuns(runs.sort((a, b) => a.persona.localeCompare(b.persona)));
-        }).catch(async (error) => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'testRuns',
-            operation: 'list'
-          }));
-        });
+        getDocs(q)
+          .then(runsSnap => {
+            const runs = runsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as TestRun));
+            setRawTestRuns(runs.sort((a, b) => a.persona.localeCompare(b.persona)));
+          })
+          .catch(async () => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: 'testRuns',
+              operation: 'list'
+            }));
+          });
 
-      }).catch(async (error) => {
+      })
+      .catch(async () => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: assessmentRef.path,
           operation: 'get'
         }));
-        toast({ variant: "destructive", title: "Access Denied", description: "You do not have permission to view this report." });
-      }).finally(() => {
+      })
+      .finally(() => {
         setLoading(false);
       });
-    };
-    fetchData();
   }, [id, db, user]);
 
   const kpis = useMemo(() => computeKPIs(rawTestRuns), [rawTestRuns]);

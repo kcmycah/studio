@@ -13,14 +13,25 @@ export const firebaseConfig = {
 
 /**
  * Validates the Firebase configuration.
- * Returns true if all required keys are present.
+ * Returns true if all required keys are present and don't look like placeholders.
  */
 export function isFirebaseConfigValid(): boolean {
-  return !!(
-    firebaseConfig.apiKey &&
-    firebaseConfig.projectId &&
-    firebaseConfig.appId
-  );
+  const { apiKey, projectId, appId } = firebaseConfig;
+  
+  if (!apiKey || !projectId || !appId) return false;
+  
+  // Basic check for common placeholder strings
+  const isPlaceholder = (val: string | undefined) => 
+    !val || 
+    val.includes('YOUR_') || 
+    val.includes('REPLACE_') || 
+    val.length < 5;
+
+  if (isPlaceholder(apiKey) || isPlaceholder(projectId) || isPlaceholder(appId)) {
+    return false;
+  }
+
+  return true;
 }
 
 // Diagnostics for development

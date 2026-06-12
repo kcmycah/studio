@@ -6,12 +6,18 @@ import { firebaseConfig, isFirebaseConfigValid } from './config';
 /**
  * Initializes Firebase services safely.
  * Returns nulls if the configuration is missing or invalid.
+ * Prevents initialization if credentials look like placeholders.
  */
 export function initializeFirebase(): {
   app: FirebaseApp | null;
   firestore: Firestore | null;
   auth: Auth | null;
 } {
+  if (typeof window === 'undefined') {
+    // SSR safe return
+    return { app: null, firestore: null, auth: null };
+  }
+
   if (!isFirebaseConfigValid()) {
     return { app: null, firestore: null, auth: null };
   }
@@ -23,7 +29,8 @@ export function initializeFirebase(): {
 
     return { app, firestore, auth };
   } catch (error) {
-    console.error("Firebase initialization failed:", error);
+    // We return nulls here to allow the ClientProvider to show a setup UI
+    // instead of crashing the entire application bundle.
     return { app: null, firestore: null, auth: null };
   }
 }

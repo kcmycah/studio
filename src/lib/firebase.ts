@@ -1,10 +1,30 @@
 /**
  * Legacy Firebase initialization file bridge.
- * This file is now a bridge to the centralized Firebase initialization
- * to prevent multiple app instances and resolve "invalid-api-key" errors.
+ * Refactored to prevent module-scope execution crashes.
+ * Standardizes access to Firebase instances via safe getters.
  */
 import { initializeFirebase } from "@/firebase";
 
-const { app, firestore: db, auth } = initializeFirebase();
+let cachedInit: ReturnType<typeof initializeFirebase> | null = null;
 
-export { app, db, auth };
+function getInit() {
+  if (!cachedInit) {
+    cachedInit = initializeFirebase();
+  }
+  return cachedInit;
+}
+
+/**
+ * @deprecated Use useFirestore() hook or standardized context.
+ */
+export const db = typeof window !== 'undefined' ? getInit().firestore : null;
+
+/**
+ * @deprecated Use useAuth() hook or standardized context.
+ */
+export const auth = typeof window !== 'undefined' ? getInit().auth : null;
+
+/**
+ * @deprecated Use useFirebaseApp() hook or standardized context.
+ */
+export const app = typeof window !== 'undefined' ? getInit().app : null;
