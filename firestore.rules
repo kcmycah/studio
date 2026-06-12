@@ -7,22 +7,28 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
+    // Helper: check if parent system is owned by user
+    function isSystemOwner(systemId) {
+      return request.auth != null && get(/databases/$(database)/documents/ai_systems/$(systemId)).data.userId == request.auth.uid;
+    }
+
     // AI systems
     match /ai_systems/{systemId} {
       allow read, write, delete: if isOwner(resource.data.userId);
       allow create: if request.auth != null && isOwner(request.resource.data.userId);
 
-      // Assessments subcollection – scoped to the system owner
+      // Assessments subcollection – restricted via parent system ownership
       match /assessments/{assessmentId} {
-        allow read, write, delete: if isOwner(get(/databases/$(database)/documents/ai_systems/$(systemId)).data.userId);
-        allow create: if request.auth != null && isOwner(request.resource.data.userId);
+        allow read, write, delete: if isSystemOwner(systemId);
+        allow create: if request.auth != null && isOwner(request.resource.data.userId) && request.resource.data.systemId == systemId;
       }
     }
 
-    // testRuns – simplified to direct ownership
+    // testRuns – direct ownership field
     match /testRuns/{document} {
       allow read: if isOwner(resource.data.userId);
-      allow write: if request.auth != null;
+      allow create: if request.auth != null && isOwner(request.resource.data.userId);
+      allow update, delete: if isOwner(resource.data.userId);
     }
 
     // user_preferences

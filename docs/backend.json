@@ -132,7 +132,7 @@
     },
     "/ai_systems/{systemId}/assessments/{assessmentId}": {
       "schema": "Assessment",
-      "description": "System-specific record of comprehensive DISA audits."
+      "description": "System-nested records of comprehensive DISA audits."
     },
     "/testRuns/{runId}": {
       "schema": "TestRun",
