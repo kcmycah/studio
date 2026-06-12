@@ -10,7 +10,7 @@ Follow these steps to push your code to GitHub and deploy to production.
 Run these commands in your local project root:
 
 ```bash
-# Initialize git (if not already done)
+# Initialize git
 git init
 
 # Add all project files
@@ -29,13 +29,19 @@ git branch -M main
 git push -u origin main
 ```
 
-### 2. Deploy to Vercel
+### 2. Export Source Code
+If you need to create a zip archive for backup:
+```bash
+zip -r disa-app.zip . -x "*.git*" "node_modules/*" ".next/*"
+```
+
+### 3. Deploy to Vercel
 1. Install the Vercel CLI: `npm install -g vercel`.
 2. Run `vercel` to link your project and deploy a preview.
 3. Add your environment variables (Firebase Keys, Gemini Key, Resend Key) in the [Vercel Dashboard Settings](https://vercel.com/dashboard).
 4. Run `vercel --prod` for the final production deployment.
 
-### 3. Database & Security
+### 4. Database & Security
 Ensure your Firestore rules from `firestore.rules` are deployed via the Firebase Console.
 
 ---
