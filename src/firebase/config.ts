@@ -1,3 +1,4 @@
+
 /**
  * Firebase configuration object.
  * Values are pulled from environment variables.
