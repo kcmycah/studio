@@ -5,6 +5,8 @@ AuditAccess is a professional platform for auditing AI systems for accessibility
 
 ## 🚀 Deployment Guide
 
+Follow these steps to launch your production audit pipeline.
+
 ### 1. Push to GitHub
 Run these commands in your project root to upload the source code to your repository:
 
@@ -33,6 +35,7 @@ git push -u origin main
 2. Select your project: **disa-ec810**.
 3. Enable **Authentication** with the Email/Password provider.
 4. Create a **Cloud Firestore** database in production mode.
+5. In **Firestore Rules**, ensure the rules from `firestore.rules` in this project are applied.
 
 ### 3. Deploy to Vercel
 1. Install the Vercel CLI: `npm install -g vercel`.
