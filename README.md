@@ -6,7 +6,7 @@ AuditAccess is a production-grade platform for auditing AI systems for accessibi
 ## 🚀 Deployment Instructions
 
 ### 1. Environment Variables
-Configure the following in your deployment environment (e.g., Vercel):
+Configure the following in your Vercel Project Settings:
 - `NEXT_PUBLIC_FIREBASE_API_KEY`
 - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
 - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
@@ -27,17 +27,17 @@ This application uses a high-performance **subcollection architecture**. Rules a
 git init
 git add .
 git commit -m "Initial commit: Production-ready DISA Pipeline"
-# Using GitHub CLI (gh)
 gh repo create disa-app --public --source=. --remote=origin --push
 ```
 
 ### 4. Vercel Deployment
 ```bash
 vercel login
+vercel link
 vercel --prod
 ```
 
 ## Architecture
 - **Nested Assessments**: Assessments are stored per-system (`ai_systems/{id}/assessments`) to ensure strict data isolation.
-- **Intelligent Scoping**: The `useCollection` hook automatically injects security filters for user-owned collections.
+- **Intelligent Scoping**: The `useCollection` hook automatically injects security filters for top-level user-owned collections while respecting path-scoped subcollections.
 - **GenAI Summaries**: Uses Genkit and Gemini to generate executive summaries and persona-impact explanations.
