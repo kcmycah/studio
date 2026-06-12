@@ -36,7 +36,8 @@ import {
   CheckCircle2,
   Users,
   BarChart4,
-  ArrowRight
+  ArrowRight,
+  Scale
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -148,50 +149,79 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
-      {/* Left Pane: Branding & Framework Context */}
+      {/* Left Pane: Branding & Comprehensive Framework Explanation */}
       <div className="hidden lg:flex flex-col justify-between p-12 bg-black text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,#5e6ad220,transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,#5e6ad225,transparent)]" />
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-12">
+          <div className="flex items-center gap-3 mb-16">
             <div className="bg-accent p-2 rounded-xl">
               <ShieldCheck className="w-8 h-8 text-white" />
             </div>
-            <span className="text-2xl font-black tracking-tighter">DISA Audit</span>
+            <span className="text-2xl font-black tracking-tighter">AuditAccess</span>
           </div>
 
-          <div className="space-y-10 max-w-lg">
-            <h2 className="text-5xl font-black leading-tight tracking-tighter">
-              The Inclusive Standard for <span className="text-accent">AI Performance.</span>
-            </h2>
-            <p className="text-xl text-white/60 font-medium leading-relaxed">
-              Standard automated tools check code; we check outcomes. DISA measures functional equity to ensure AI works for everyone.
-            </p>
+          <div className="space-y-12 max-w-xl">
+            <div className="space-y-4">
+              <h2 className="text-5xl font-black leading-tight tracking-tighter">
+                The Standard for <span className="text-accent">Inclusive AI.</span>
+              </h2>
+              <p className="text-xl text-white/70 font-medium leading-relaxed">
+                Standard automated tools only check code compliance. AuditAccess measures <span className="text-white font-bold">functional equity</span> using the DISA framework.
+              </p>
+            </div>
 
-            <div className="grid grid-cols-1 gap-6 pt-8">
-              {[
-                { icon: CheckCircle2, title: "Deterministic Scoring", desc: "Seeded simulations ensure repeatable compliance benchmarks." },
-                { icon: Users, title: "Persona-Based Auditing", desc: "Tested across 7 key disability personas for real-world impact." },
-                { icon: BarChart4, title: "Strategic Briefings", desc: "Automated executive reporting for technical and legal stakeholders." }
-              ].map((item, i) => (
-                <div key={i} className="flex gap-4">
-                  <div className="mt-1">
-                    <item.icon className="w-5 h-5 text-accent" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-white/90">{item.title}</h4>
-                    <p className="text-sm text-white/50">{item.desc}</p>
+            <div className="grid grid-cols-1 gap-10">
+              <div className="flex gap-5">
+                <div className="shrink-0">
+                  <div className="bg-white/10 p-3 rounded-2xl">
+                    <Scale className="w-6 h-6 text-accent" />
                   </div>
                 </div>
-              ))}
+                <div>
+                  <h4 className="text-lg font-bold mb-1">What is DISA?</h4>
+                  <p className="text-sm text-white/50 leading-relaxed">
+                    The Disability-Inclusive System Assessment (DISA) weights accessibility alongside task completion. It ensures that users with disabilities can actually achieve their goals, not just interact with buttons.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-5">
+                <div className="shrink-0">
+                  <div className="bg-white/10 p-3 rounded-2xl">
+                    <Users className="w-6 h-6 text-accent" />
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-lg font-bold mb-1">Persona Simulations</h4>
+                  <p className="text-sm text-white/50 leading-relaxed">
+                    We audit your AI endpoints through 7 key disability personas, including Blind, Deaf, Dyslexic, and Cognitive disabilities, to identify real-world functional barriers.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-5">
+                <div className="shrink-0">
+                  <div className="bg-white/10 p-3 rounded-2xl">
+                    <BarChart4 className="w-6 h-6 text-accent" />
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-lg font-bold mb-1">Strategic Briefings</h4>
+                  <p className="text-sm text-white/50 leading-relaxed">
+                    Automated executive reporting translates complex accessibility violations into business risk and legal exposure metrics for stakeholders.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="relative z-10 pt-12">
-          <div className="flex gap-8 text-[10px] font-black uppercase tracking-[0.2em] opacity-40">
-            <span>v2.4 Stable</span>
-            <span>GDPR / WCAG 2.2</span>
-            <span>Section 508 Compliant</span>
+        <div className="relative z-10 pt-12 border-t border-white/10">
+          <div className="flex flex-wrap gap-8 text-[10px] font-black uppercase tracking-[0.2em] opacity-40">
+            <span>WCAG 2.2 / SECTION 508</span>
+            <span>GDPR COMPLIANT</span>
+            <span>AI GOVERNANCE READY</span>
+            <span>v2.4 STABLE</span>
           </div>
         </div>
       </div>
@@ -203,7 +233,7 @@ export default function LoginPage() {
             <div className="inline-flex items-center justify-center p-3 bg-accent/10 rounded-2xl mb-2">
               <ShieldCheck className="w-10 h-10 text-accent" />
             </div>
-            <h1 className="text-3xl font-black tracking-tight">DISA Audit</h1>
+            <h1 className="text-3xl font-black tracking-tight">AuditAccess</h1>
             <p className="text-muted-foreground">The inclusive standard for AI accessibility.</p>
           </div>
 
@@ -249,7 +279,7 @@ export default function LoginPage() {
                       <li>• <strong>Password Auth</strong> must be enabled in the Firebase Console under Authentication &gt; Sign-in method.</li>
                     )}
                     {(errorDetails.code === 'auth/unauthorized-domain' || errorDetails.message.includes('domain')) && (
-                      <li>• This domain needs to be added to <strong>Authorized Domains</strong> in the Firebase Console Settings.</li>
+                      <li>• This domain needs to be added to <strong>Authorized Domains</strong> in the Firebase Console.</li>
                     )}
                     <li>• Ensure your corporate firewall allows connections to <code className="bg-accent/10 px-1 rounded">firebaseapp.com</code>.</li>
                   </ul>
