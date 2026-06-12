@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { getFirestore, Firestore, terminate, clearIndexedDbPersistence } from 'firebase/firestore';
 import { getAuth, Auth } from 'firebase/auth';
 import { firebaseConfig, isFirebaseConfigValid } from './config';
 
@@ -32,6 +32,28 @@ export function initializeFirebase(): {
     // We return nulls here to allow the ClientProvider to show a setup UI
     // instead of crashing the entire application bundle.
     return { app: null, firestore: null, auth: null };
+  }
+}
+
+/**
+ * Utility to clear local Firestore persistence and storage.
+ * Useful for troubleshooting "History" or data synchronization errors.
+ */
+export async function clearFirebaseCache() {
+  const { firestore } = initializeFirebase();
+  if (firestore) {
+    try {
+      await terminate(firestore);
+      await clearIndexedDbPersistence(firestore);
+    } catch (err) {
+      console.error("Cache clear failed:", err);
+    }
+  }
+  
+  if (typeof window !== 'undefined') {
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.reload();
   }
 }
 

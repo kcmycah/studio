@@ -1,10 +1,9 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppSidebar } from "@/components/app-sidebar";
-import { useUser, useFirestore, useAuth } from "@/firebase";
+import { useUser, useFirestore, useAuth, clearFirebaseCache } from "@/firebase";
 import { signOut } from "firebase/auth";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { UserProfile } from "@/lib/types";
@@ -20,7 +19,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { User, Mail, Bell, Calendar, Loader2, Save, ShieldAlert, LogOut } from "lucide-react";
+import { User, Mail, Bell, Calendar, Loader2, Save, ShieldAlert, LogOut, RefreshCw, Database } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -38,6 +37,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [clearingCache, setClearingCache] = useState(false);
 
   useEffect(() => {
     if (!user || !db) return;
@@ -95,6 +95,12 @@ export default function SettingsPage() {
       toast({ variant: "destructive", title: "Sign out failed" });
       setLoggingOut(false);
     }
+  };
+
+  const handleClearCache = async () => {
+    setClearingCache(true);
+    toast({ title: "Clearing Cache", description: "Resetting local database and preferences..." });
+    await clearFirebaseCache();
   };
 
   const isPro = profile?.subscriptionStatus === 'pro' || profile?.subscriptionStatus === 'enterprise';
@@ -217,6 +223,27 @@ export default function SettingsPage() {
                   </Select>
                 </div>
               </CardContent>
+            </Card>
+
+            <Card className="border-accent/20 bg-accent/5">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2 text-accent">
+                  <Database className="w-5 h-5" />
+                  Troubleshooting
+                </CardTitle>
+                <CardDescription>Reset local application state if you experience data synchronization issues.</CardDescription>
+              </CardHeader>
+              <CardFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={handleClearCache} 
+                  disabled={clearingCache}
+                  className="w-full font-bold border-accent text-accent hover:bg-accent hover:text-white"
+                >
+                  {clearingCache ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                  Clear Application Cache
+                </Button>
+              </CardFooter>
             </Card>
 
             <Card className="border-destructive/20 bg-destructive/5">
