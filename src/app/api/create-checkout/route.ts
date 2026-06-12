@@ -4,6 +4,7 @@ import { lemonSqueezySetup, createCheckout } from "@lemonsqueezy/lemonsqueezy.js
 
 /**
  * @fileOverview Initiates a Lemon Squeezy checkout session for Pro/Enterprise plans.
+ * This route handles the secure communication with the Lemon Squeezy API.
  */
 
 export async function POST(req: NextRequest) {
@@ -29,13 +30,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid LEMON_SQUEEZY_STORE_ID. Must be a numeric value." }, { status: 500 });
     }
 
-    // Initialize Lemon Squeezy client
+    // Initialize Lemon Squeezy client with explicit API Key
     lemonSqueezySetup({
       apiKey: apiKey,
       onError: (error) => console.error("Lemon Squeezy Initialization Error:", error),
     });
 
-    // Create the checkout session
+    // Create the checkout session with custom metadata for webhooks
     const checkout = await createCheckout(
       storeId.toString(),
       variantId,
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
     );
 
     if (!checkout.data) {
-      throw new Error("Lemon Squeezy API did not return a checkout object. Verify your Store ID and Variant ID.");
+      throw new Error("Lemon Squeezy API did not return a checkout object. Please verify your Store ID and Variant ID in the Lemon Squeezy dashboard.");
     }
 
     return NextResponse.json({ url: checkout.data.data.attributes.url });
